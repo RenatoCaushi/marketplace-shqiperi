@@ -17,10 +17,15 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* Fsheh foton/widget-in e profilit poshtë djathtas */
-    [data-testid="stStatusWidget"], div[data-testid="stToolbar"], footer {
-        visibility: hidden;
-        display: none;
+    /* Fsheh totalisht treguesin e Streamlit, menunë, toolbar dhe panelin e autorit poshtë djathtas */
+    #MainMenu, header, footer, 
+    [data-testid="stStatusWidget"], 
+    [data-testid="stToolbar"], 
+    [data-testid="stDecoration"],
+    div[class*="viewerBadge"],
+    .stAppToolbar {
+        visibility: hidden !important;
+        display: none !important;
     }
     .site-header {
         background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
