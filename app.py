@@ -169,7 +169,7 @@ with tab1:
         st.markdown(f"**Njoftime të shfaqura:** {len(filtered_df)}")
         st.write("")
         
-        # Shfaqja në formë Grid me 2 kolona
+        # Shfaqja në formë Grid me 2 kolona dhe opsion për Faqe Detajesh
         njoftime_list = filtered_df.to_dict('records')
         for i in range(0, len(njoftime_list), 2):
             col_grid1, col_grid2 = st.columns(2)
@@ -196,23 +196,29 @@ with tab1:
                 
                 st.markdown(f'<span class="{badge_class}">{cat}</span>', unsafe_allow_html=True)
                 st.markdown(f"### {row['titulli']}")
-                st.write(row['pershkrimi'])
                 
-                if row['detaje_specifike']:
-                    st.markdown(f"Info: `{row['detaje_specifike']}`")
-                st.caption(f"Lokacioni: {row['lokacioni']} | Telefoni: {row['kontakti']} | Data: {row['data']}")
+                # Shfaqim vetëm një pjesë të përshkrimit te karta kryesore
+                p_shkurtër = row['pershkrimi'][:100] + "..." if len(row['pershkrimi']) > 100 else row['pershkrimi']
+                st.write(p_shkurtër)
                 
                 if pd.notna(row['cmimi']) and row['cmimi'] > 0:
                     st.success(f"Çmimi: {row['cmimi']} €")
                 else:
                     st.info("Çmimi: Me Marrëveshje")
                     
-                telefon = str(row['kontakti']).strip()
-                if telefon.isdigit() or telefon.startswith("+"):
-                    w_link = f"https://wa.me/{telefon.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row['titulli']}"
-                    b1, b2 = st.columns(2)
-                    b1.markdown(f"[WhatsApp]({w_link})", unsafe_allow_html=True)
-                    b2.markdown(f"[Telefono](tel:{telefon})", unsafe_allow_html=True)
+                # Butoni për të hapur detajet e plota (Expander ose Modal i brendshëm)
+                with st.expander("Shiko Detajet e Plota & Kontaktin"):
+                    st.write(f"**Përshkrimi i plotë:** {row['pershkrimi']}")
+                    if row['detaje_specifike']:
+                        st.markdown(f"**Specifikat:** `{row['detaje_specifike']}`")
+                    st.caption(f"Lokacioni: {row['lokacioni']} | Telefoni: {row['kontakti']} | Data: {row['data']}")
+                    
+                    telefon = str(row['kontakti']).strip()
+                    if telefon.isdigit() or telefon.startswith("+"):
+                        w_link = f"https://wa.me/{telefon.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row['titulli']}"
+                        b1, b2 = st.columns(2)
+                        b1.markdown(f"[WhatsApp]({w_link})", unsafe_allow_html=True)
+                        b2.markdown(f"[Telefono](tel:{telefon})", unsafe_allow_html=True)
                 
                 if st.button("Fshi Njoftimin", key=f"fshi_{row['id']}"):
                     fshi_njoftimin(row['id'], row['foto_path'])
@@ -244,23 +250,27 @@ with tab1:
                     
                     st.markdown(f'<span class="{badge_class2}">{cat2}</span>', unsafe_allow_html=True)
                     st.markdown(f"### {row2['titulli']}")
-                    st.write(row2['pershkrimi'])
                     
-                    if row2['detaje_specifike']:
-                        st.markdown(f"Info: `{row2['detaje_specifike']}`")
-                    st.caption(f"Lokacioni: {row2['lokacioni']} | Telefoni: {row2['kontakti']} | Data: {row2['data']}")
+                    p_shkurtër2 = row2['pershkrimi'][:100] + "..." if len(row2['pershkrimi']) > 100 else row2['pershkrimi']
+                    st.write(p_shkurtër2)
                     
                     if pd.notna(row2['cmimi']) and row2['cmimi'] > 0:
                         st.success(f"Çmimi: {row2['cmimi']} €")
                     else:
                         st.info("Çmimi: Me Marrëveshje")
                         
-                    telefon2 = str(row2['kontakti']).strip()
-                    if telefon2.isdigit() or telefon2.startswith("+"):
-                        w_link2 = f"https://wa.me/{telefon2.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row2['titulli']}"
-                        bx1, bx2 = st.columns(2)
-                        bx1.markdown(f"[WhatsApp]({w_link2})", unsafe_allow_html=True)
-                        bx2.markdown(f"[Telefono](tel:{telefon2})", unsafe_allow_html=True)
+                    with st.expander("Shiko Detajet e Plota & Kontaktin"):
+                        st.write(f"**Përshkrimi i plotë:** {row2['pershkrimi']}")
+                        if row2['detaje_specifike']:
+                            st.markdown(f"**Specifikat:** `{row2['detaje_specifike']}`")
+                        st.caption(f"Lokacioni: {row2['lokacioni']} | Telefoni: {row2['kontakti']} | Data: {row2['data']}")
+                        
+                        telefon2 = str(row2['kontakti']).strip()
+                        if telefon2.isdigit() or telefon2.startswith("+"):
+                            w_link2 = f"https://wa.me/{telefon2.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row2['titulli']}"
+                            bx1, bx2 = st.columns(2)
+                            bx1.markdown(f"[WhatsApp]({w_link2})", unsafe_allow_html=True)
+                            bx2.markdown(f"[Telefono](tel:{telefon2})", unsafe_allow_html=True)
                     
                     if st.button("Fshi Njoftimin", key=f"fshi_{row2['id']}"):
                         fshi_njoftimin(row2['id'], row2['foto_path'])
@@ -326,6 +336,5 @@ st.markdown("""
     <hr style="margin-top: 40px; margin-bottom: 20px;">
     <div style="text-align: center; color: #6B7280; font-size: 14px; padding-bottom: 20px;">
         <p><b>Marketplace Shqipëri</b> &copy; 2026 | Të gjitha të drejtat e rezervuara.</p>
-        <p>Ndërtuar me Python & Streamlit 🚀</p>
     </div>
 """, unsafe_allow_html=True)
