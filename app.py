@@ -17,45 +17,78 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    .hero-container {
-        background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
-        padding: 35px 30px;
-        border-radius: 16px;
+    /* STILIMI I HEADER-IT */
+    .site-header {
+        background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
+        padding: 20px 30px;
+        border-radius: 14px;
         color: white;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.25);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.25);
     }
-    .hero-title {
-        font-size: 38px;
+    .header-logo {
+        font-size: 26px;
         font-weight: 800;
-        margin-bottom: 8px;
-        letter-spacing: -0.5px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
-    .hero-subtitle {
-        font-size: 16px;
-        opacity: 0.9;
-        font-weight: 400;
+    .header-tagline {
+        font-size: 14px;
+        opacity: 0.85;
     }
+
+    /* KARTELAT DHE ELEMENTET E TJERA */
     .card-box {
         background-color: #ffffff;
-        border: 1px solid #E5E7EB;
-        padding: 22px;
-        border-radius: 16px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        border: 1px solid #E2E8F0;
+        padding: 20px;
+        border-radius: 14px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
         margin-bottom: 24px;
         height: 100%;
-        transition: all 0.25s ease-in-out;
+        transition: all 0.2s ease-in-out;
     }
     .card-box:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px -4px rgba(59, 130, 246, 0.12);
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px -3px rgba(37, 99, 235, 0.1);
         border-color: #93C5FD;
     }
-    .badge-automjete { background-color: #EFF6FF; color: #1D4ED8; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #BFDBFE; }
-    .badge-pasuri { background-color: #F0FDF4; color: #15803D; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #BBF7D0; }
-    .badge-elektronikë { background-color: #FAF5FF; color: #7E22CE; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E9D5FF; }
-    .badge-punë { background-color: #FEF2F2; color: #B91C1C; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #FECACA; }
-    .badge-tjetër { background-color: #F8FAFC; color: #475569; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E2E8F0; }
+    .badge-automjete { background-color: #EFF6FF; color: #1D4ED8; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #BFDBFE; }
+    .badge-pasuri { background-color: #F0FDF4; color: #15803D; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #BBF7D0; }
+    .badge-elektronikë { background-color: #FAF5FF; color: #7E22CE; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E9D5FF; }
+    .badge-punë { background-color: #FEF2F2; color: #B91C1C; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #FECACA; }
+    .badge-tjetër { background-color: #F8FAFC; color: #475569; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E2E8F0; }
+
+    /* STILIMI I FOOTER-IT */
+    .site-footer {
+        background-color: #0F172A;
+        color: #94A3B8;
+        padding: 40px 30px 20px 30px;
+        border-radius: 14px;
+        margin-top: 50px;
+    }
+    .footer-title {
+        color: #FFFFFF;
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+    .footer-text {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+    .footer-bottom {
+        border-top: 1px solid #1E293B;
+        margin-top: 30px;
+        padding-top: 15px;
+        text-align: center;
+        font-size: 13px;
+        color: #64748B;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -112,10 +145,16 @@ def merr_njoftimet():
     conn.close()
     return df
 
+# --- HEADER I FAQES ---
 st.markdown("""
-    <div class="hero-container">
-        <div class="hero-title">Marketplace Shqipëri</div>
-        <div class="hero-subtitle">Platforma më e pastër dhe moderne për të shfletuar dhe postuar njoftimet tuaja.</div>
+    <div class="site-header">
+        <div>
+            <div class="header-logo">🛍️ Marketplace Shqipëri</div>
+            <div class="header-tagline">Destinacioni kryesor për njoftimet tuaja në Shqipëri</div>
+        </div>
+        <div style="text-align: right; font-size: 13px; opacity: 0.9;">
+            <b>Qytetet kryesore:</b> Tiranë, Durrës, Vlorë, Shkodër...
+        </div>
     </div>
 """, unsafe_allow_html=True)
 
@@ -321,9 +360,36 @@ with tab2:
             else:
                 st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
 
+# --- FOOTER I FAQES ---
 st.markdown("""
-    <hr style="margin-top: 40px; margin-bottom: 20px;">
-    <div style="text-align: center; color: #64748B; font-size: 14px; padding-bottom: 20px;">
-        <p><b>Marketplace Shqipëri</b> &copy; 2026 | Të gjitha të drejtat e rezervuara.</p>
+    <div class="site-footer">
+        <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 30px;">
+            <div style="flex: 2; min-width: 250px;">
+                <div class="footer-title">Rreth Marketplace Shqipëri</div>
+                <div class="footer-text">
+                    Platforma juaj e besuar për blerjen, shitjen dhe dhënien me qira të automjeteve, pasurive të paluajtshme, pajisjeve elektronike dhe shërbimeve në të gjithë Shqipërinë.
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <div class="footer-title">Kategoritë</div>
+                <div class="footer-text">
+                    🚗 Automjete<br>
+                    🏠 Pasuri të Paluajtshme<br>
+                    💻 Elektronikë<br>
+                    🛠️ Punë & Shërbime
+                </div>
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <div class="footer-title">Na Kontaktoni</div>
+                <div class="footer-text">
+                    📍 Tiranë, Shqipëri<br>
+                    📧 info@marketplace.al<br>
+                    📞 +355 69 XX XX XXX
+                </div>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <b>Marketplace Shqipëri</b> &copy; 2026 | Të gjitha të drejtat e rezervuara.
+        </div>
     </div>
 """, unsafe_allow_html=True)
