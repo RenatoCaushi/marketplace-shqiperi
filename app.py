@@ -17,6 +17,11 @@ st.set_page_config(
 
 st.markdown("""
     <style>
+    /* Fsheh foton/widget-in e profilit poshtë djathtas */
+    [data-testid="stStatusWidget"], div[data-testid="stToolbar"], footer {
+        visibility: hidden;
+        display: none;
+    }
     .site-header {
         background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
         padding: 20px 30px;
@@ -113,7 +118,6 @@ def init_db():
             email TEXT
         )
     ''')
-    # Përputhshmëri me databazat ekzistuese nëse kolona email mungon
     try:
         cursor.execute("ALTER TABLE perdoruesit ADD COLUMN email TEXT")
     except:
