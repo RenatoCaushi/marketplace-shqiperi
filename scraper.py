@@ -34,14 +34,11 @@ def fetch_jobs():
             df = pd.DataFrame(jobs_list)
             return df
         else:
-            print("Gabim gjatë marrjes së të dhënave.")
             return pd.DataFrame()
             
     except Exception as e:
-        print(f"Ndodhi një gabim: {e}")
         return pd.DataFrame()
 
 if __name__ == "__main__":
     df_jobs = fetch_jobs()
     print(f"U mblodhën {len(df_jobs)} oferta pune me sukses!")
-    print(df_jobs.head())

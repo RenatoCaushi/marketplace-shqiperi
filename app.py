@@ -4,13 +4,14 @@ import sqlite3
 import os
 from datetime import datetime
 from PIL import Image
+from scraper import fetch_jobs
 
 UPLOAD_DIR = "uploaded_images"
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
 st.set_page_config(
-    page_title="Marketplace Shqipëri",
+    page_title="Marketplace Shqipëri & Remote Jobs",
     page_icon="💼",
     layout="wide"
 )
@@ -109,12 +110,12 @@ def merr_njoftimet():
 
 st.markdown("""
     <div class="hero-container">
-        <div class="hero-title">Marketplace Shqipëri</div>
-        <div class="hero-subtitle">Platforma më e shpejtë për të blerë, shitur dhe gjetur shërbime apo mundësi punësimi.</div>
+        <div class="hero-title">Marketplace Shqipëri & Remote Jobs</div>
+        <div class="hero-subtitle">Platforma më e shpejtë për të blerë, shitur, gjetur shërbime dhe mundësi punësimi ndërkombëtare.</div>
     </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri"])
+tab1, tab2, tab3 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri", "Punë Remote (Scraper)"])
 
 with tab1:
     df = merr_njoftimet()
@@ -285,6 +286,32 @@ with tab2:
                 st.success("Njoftimi u publikua me sukses!")
             else:
                 st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
+
+with tab3:
+    st.subheader("Ofertat e Punës Remote (Live nga RemoteOK)")
+    df_jobs = fetch_jobs()
+    
+    if not df_jobs.empty:
+        st.success(f"U mblodhën {len(df_jobs)} pozicione pune me sukses!")
+        search_job = st.text_input("Kërko sipas teknologjisë ose kompanisë (p.sh. Python, React):")
+        
+        if search_job:
+            df_jobs = df_jobs[
+                df_jobs['Title'].str.contains(search_job, case=False, na=False) |
+                df_jobs['Company'].str.contains(search_job, case=False, na=False) |
+                df_jobs['Tags'].str.contains(search_job, case=False, na=False)
+            ]
+        
+        for _, row in df_jobs.iterrows():
+            with st.container():
+                st.markdown(f"### {row['Title']}")
+                st.write(f"**Kompania:** {row['Company']} | **Lokacioni:** {row['Location']}")
+                st.caption(f"Kategoritë/Tags: {row['Tags']}")
+                if row['URL']:
+                    st.markdown(f"[Apliko Këtu]({row['URL']})", unsafe_allow_html=True)
+                st.divider()
+    else:
+        st.warning("Nuk u mundësua marrja e të dhënave nga API në këtë moment ose nuk ka lidhje interneti.")
 
 st.markdown("""
     <hr style="margin-top: 40px; margin-bottom: 20px;">
