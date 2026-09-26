@@ -17,7 +17,6 @@ st.set_page_config(
 
 st.markdown("""
     <style>
-    /* STILIMI I HEADER-IT */
     .site-header {
         background: linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%);
         padding: 20px 30px;
@@ -40,8 +39,6 @@ st.markdown("""
         font-size: 14px;
         opacity: 0.85;
     }
-
-    /* KARTELAT DHE ELEMENTET E TJERA */
     .card-box {
         background-color: #ffffff;
         border: 1px solid #E2E8F0;
@@ -62,8 +59,6 @@ st.markdown("""
     .badge-elektronikë { background-color: #FAF5FF; color: #7E22CE; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E9D5FF; }
     .badge-punë { background-color: #FEF2F2; color: #B91C1C; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #FECACA; }
     .badge-tjetër { background-color: #F8FAFC; color: #475569; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E2E8F0; }
-
-    /* STILIMI I FOOTER-IT */
     .site-footer {
         background-color: #0F172A;
         color: #94A3B8;
@@ -95,9 +90,11 @@ st.markdown("""
 def init_db():
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
+    # Tabela e njoftimeve me kolonen perdoruesi
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            perdoruesi TEXT,
             kategoria TEXT,
             titulli TEXT,
             pershkrimi TEXT,
@@ -109,19 +106,52 @@ def init_db():
             foto_paths TEXT
         )
     ''')
+    # Tabela e përdoruesve për login/register
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS perdoruesit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT
+        )
+    ''')
     conn.commit()
     conn.close()
 
 init_db()
 
-def shto_njoftim(kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_paths_str):
+# Menaxhimi i sesionit të hyrjes në Streamlit
+if 'user_logged_in' not in st.session_state:
+    st.session_state['user_logged_in'] = False
+if 'username' not in st.session_state:
+    st.session_state['username'] = ""
+
+def regjistro_user(username, password):
+    try:
+        conn = sqlite3.connect('njoftime.db')
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO perdoruesit (username, password) VALUES (?, ?)", (username, password))
+        conn.commit()
+        conn.close()
+        return True
+    except:
+        return False
+
+def verifiko_user(username, password):
+    conn = sqlite3.connect('njoftime.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM perdoruesit WHERE username = ? AND password = ?", (username, password))
+    user = cursor.fetchone()
+    conn.close()
+    return user is not None
+
+def shto_njoftim(perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_paths_str):
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
     data_aktuale = datetime.now().strftime("%Y-%m-%d %H:%M")
     cursor.execute('''
-        INSERT INTO njoftime (kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data, foto_paths)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data_aktuale, foto_paths_str))
+        INSERT INTO njoftime (perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data, foto_paths)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data_aktuale, foto_paths_str))
     conn.commit()
     conn.close()
 
@@ -158,6 +188,44 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
+# Sidebar për Autentifikimin (Login / Register)
+st.sidebar.title("Llogaria Ime")
+if not st.session_state['user_logged_in']:
+    auth_mode = st.sidebar.radio("Zgjidhni veprimin", ["Kyçu (Login)", "Regjistrohu (Register)"])
+    
+    if auth_mode == "Kyçu (Login)":
+        with st.sidebar.form("login_form"):
+            l_user = st.text_input("Username")
+            l_pass = st.text_input("Fjalëkalimi", type="password")
+            l_submit = st.form_submit_button("Hyr")
+            if l_submit:
+                if verifiko_user(l_user, l_pass):
+                    st.session_state['user_logged_in'] = True
+                    st.session_state['username'] = l_user
+                    st.success("U kyçët me sukses!")
+                    st.rerun()
+                else:
+                    st.error("Username ose fjalëkalim i gabuar!")
+    else:
+        with st.sidebar.form("register_form"):
+            r_user = st.text_input("Krijo Username")
+            r_pass = st.text_input("Krijo Fjalëkalim", type="password")
+            r_submit = st.form_submit_button("Regjistrohu")
+            if r_submit:
+                if r_user and r_pass:
+                    if regjistro_user(r_user, r_pass):
+                        st.success("Regjistrimi u krye! Tani mund të kyçeni.")
+                    else:
+                        st.error("Ky username ekziston tashmë!")
+                else:
+                        st.error("Plotësoni të gjitha fushat.")
+else:
+    st.sidebar.success(MeV = f"Përshëndetje, **{st.session_state['username']}**!")
+    if st.sidebar.button("Dil (Logout)"):
+        st.session_state['user_logged_in'] = False
+        st.session_state['username'] = ""
+        st.rerun()
+
 tab1, tab2 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri"])
 
 with tab1:
@@ -168,6 +236,7 @@ with tab1:
         col_m2.metric("Qytete të Përfshira", df['lokacioni'].nunique() if 'lokacioni' in df else 0)
         st.divider()
         
+        st.sidebar.divider()
         st.sidebar.header("Filtrimi i Njoftimeve")
         kategorite = ["Të gjitha"] + list(df['kategoria'].unique())
         zgjidh_kategori = st.sidebar.selectbox("Kategoria", kategorite)
@@ -241,7 +310,7 @@ with tab1:
                     st.write(f"**Përshkrimi i plotë:** {row['pershkrimi']}")
                     if row['detaje_specifike']:
                         st.markdown(f"**Specifikat:** `{row['detaje_specifike']}`")
-                    st.caption(f"Lokacioni: {row['lokacioni']} | Telefoni: {row['kontakti']} | Data: {row['data']}")
+                    st.caption(f"Postuar nga: {row['perdoruesi']} | Lokacioni: {row['lokacioni']} | Telefoni: {row['kontakti']} | Data: {row['data']}")
                     telefon = str(row['kontakti']).strip()
                     if telefon.isdigit() or telefon.startswith("+"):
                         w_link = f"https://wa.me/{telefon.replace('+', '')}?text=Përshëndetje, jam i interesuar për njoftimin: {row['titulli']}"
@@ -249,10 +318,12 @@ with tab1:
                         b1.markdown(f"[WhatsApp]({w_link})", unsafe_allow_html=True)
                         b2.markdown(f"[Telefono](tel:{telefon})", unsafe_allow_html=True)
                 
-                if st.button("Fshi Njoftimin", key=f"fshi_{row['id']}"):
-                    fshi_njoftimin(row['id'], row['foto_paths'])
-                    st.success("U fshi!")
-                    st.rerun()
+                # Lejo fshirjen vetëm nëse përdoruesi është i kyçur dhe është pronar i njoftimit
+                if st.session_state['user_logged_in'] and st.session_state['username'] == row['perdoruesi']:
+                    if st.button("Fshi Njoftimin Tim", key=f"fshi_{row['id']}"):
+                        fshi_njoftimin(row['id'], row['foto_paths'])
+                        st.success("U fshi!")
+                        st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
                 
             if i + 1 < len(njoftime_list):
@@ -292,7 +363,7 @@ with tab1:
                         st.write(f"**Përshkrimi i plotë:** {row2['pershkrimi']}")
                         if row2['detaje_specifike']:
                             st.markdown(f"**Specifikat:** `{row2['detaje_specifike']}`")
-                        st.caption(f"Lokacioni: {row2['lokacioni']} | Telefoni: {row2['kontakti']} | Data: {row2['data']}")
+                        st.caption(f"Postuar nga: {row2['perdoruesi']} | Lokacioni: {row2['lokacioni']} | Telefoni: {row2['kontakti']} | Data: {row2['data']}")
                         telefon2 = str(row2['kontakti']).strip()
                         if telefon2.isdigit() or telefon2.startswith("+"):
                             w_link2 = f"https://wa.me/{telefon2.replace('+', '')}?text=Përshëndetje, jam i interesuar për njoftimin: {row2['titulli']}"
@@ -300,65 +371,69 @@ with tab1:
                             bx1.markdown(f"[WhatsApp]({w_link2})", unsafe_allow_html=True)
                             bx2.markdown(f"[Telefono](tel:{telefon2})", unsafe_allow_html=True)
                     
-                    if st.button("Fshi Njoftimin", key=f"fshi_{row2['id']}"):
-                        fshi_njoftimin(row2['id'], row2['foto_paths'])
-                        st.success("U fshi!")
-                        st.rerun()
+                    if st.session_state['user_logged_in'] and st.session_state['username'] == row2['perdoruesi']:
+                        if st.button("Fshi Njoftimin Tim", key=f"fshi_{row2['id']}"):
+                            fshi_njoftimin(row2['id'], row2['foto_paths'])
+                            st.success("U fshi!")
+                            st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info("Nuk ka asnjë njoftim të postuar ende.")
 
 with tab2:
     st.subheader("Shto Njoftim të Ri në Platformë")
-    with st.form("formular_njoftimi", clear_on_submit=True):
-        kategoria = st.selectbox("Kategoria e Njoftimit", ["Automjete", "Pasuri të Paluajtshme", "Elektronikë", "Punë & Shërbime", "Shtëpi & Kopsht", "Të Tjera"])
-        titulli = st.text_input("Titulli i Njoftimit (p.sh. Shitet Audi A4 / Apartament 2+1)")
-        pershkrimi = st.text_area("Përshkrimi i detajuar")
-        
-        detaje_specifike = ""
-        if kategoria == "Automjete":
-            col_m1, col_m2, col_m3 = st.columns(3)
-            vit_prodhimi = col_m1.text_input("Viti i Prodhimit (p.sh. 2018)")
-            km = col_m2.text_input("Kilometrazhi (p.sh. 150000 km)")
-            kambio = col_m3.selectbox("Kambio", ["Automatike", "Manuale"])
-            detaje_specifike = f"Viti: {vit_prodhimi} | KM: {km} | Kambio: {kambio}"
-        elif kategoria == "Pasuri të Paluajtshme":
-            col_s1, col_s2 = st.columns(2)
-            sipfaqja = col_s1.text_input("Sipërfaqja (p.sh. 85 m²)")
-            dhoma = col_s2.text_input("Kategoria/Dhomat (p.sh. 2+1)")
-            detaje_specifike = f"Sipërfaqja: {sipfaqja} | Dhomat: {dhoma}"
-        elif kategoria == "Punë & Shërbime":
-            lloji_punes = st.selectbox("Lloji i Orarit", ["Full-time", "Part-time", "Freelance / Shërbim"])
-            detaje_specifike = f"Orari: {lloji_punes}"
-
-        c_p1, c_p2 = st.columns(2)
-        with c_p1:
-            cmimi_input = st.number_input("Çmimi në Euro (€) (Lëre 0 nëse s'ka çmim)", min_value=0.0, step=10.0)
-        with c_p2:
-            lokacioni = st.selectbox("Lokacioni (Qyteti)", ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier", "Korçë", "Gjirokastër", "Tjetër"])
+    if not st.session_state['user_logged_in']:
+        st.warning("Ju lutem kyçuni (login) nga shiriti anësor (sidebar) për të postuar një njoftim të ri!")
+    else:
+        with st.form("formular_njoftimi", clear_on_submit=True):
+            kategoria = st.selectbox("Kategoria e Njoftimit", ["Automjete", "Pasuri të Paluajtshme", "Elektronikë", "Punë & Shërbime", "Shtëpi & Kopsht", "Të Tjera"])
+            titulli = st.text_input("Titulli i Njoftimit (p.sh. Shitet Audi A4 / Apartament 2+1)")
+            pershkrimi = st.text_area("Përshkrimi i detajuar")
             
-        kontakti = st.text_input("Numri i Telefonit (p.sh. 069XXXXXXX)")
-        uploaded_files = st.file_uploader("Ngarko foto (Mund të zgjedhësh disa njëkohësisht)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-        
-        submit_button = st.form_submit_button(label="Publiko Njoftimin Tani")
-        
-        if submit_button:
-            if titulli and pershkrimi and kontakti:
-                foto_paths_list = []
-                if uploaded_files:
-                    for uploaded_file in uploaded_files:
-                        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                        filename = f"{timestamp_str}_{uploaded_file.name}"
-                        f_path = os.path.join(UPLOAD_DIR, filename)
-                        with open(f_path, "wb") as f:
-                            f.write(uploaded_file.getbuffer())
-                        foto_paths_list.append(f_path)
+            detaje_specifike = ""
+            if kategoria == "Automjete":
+                col_m1, col_m2, col_m3 = st.columns(3)
+                vit_prodhimi = col_m1.text_input("Viti i Prodhimit (p.sh. 2018)")
+                km = col_m2.text_input("Kilometrazhi (p.sh. 150000 km)")
+                kambio = col_m3.selectbox("Kambio", ["Automatike", "Manuale"])
+                detaje_specifike = f"Viti: {vit_prodhimi} | KM: {km} | Kambio: {kambio}"
+            elif kategoria == "Pasuri të Paluajtshme":
+                col_s1, col_s2 = st.columns(2)
+                sipfaqja = col_s1.text_input("Sipërfaqja (p.sh. 85 m²)")
+                dhoma = col_s2.text_input("Kategoria/Dhomat (p.sh. 2+1)")
+                detaje_specifike = f"Sipërfaqja: {sipfaqja} | Dhomat: {dhoma}"
+            elif kategoria == "Punë & Shërbime":
+                lloji_punes = st.selectbox("Lloji i Orarit", ["Full-time", "Part-time", "Freelance / Shërbim"])
+                detaje_specifike = f"Orari: {lloji_punes}"
+
+            c_p1, c_p2 = st.columns(2)
+            with c_p1:
+                cmimi_input = st.number_input("Çmimi në Euro (€) (Lëre 0 nëse s'ka çmim)", min_value=0.0, step=10.0)
+            with c_p2:
+                lokacioni = st.selectbox("Lokacioni (Qyteti)", ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier", "Korçë", "Gjirokastër", "Tjetër"])
                 
-                foto_paths_str = ",".join(foto_paths_list)
-                shto_njoftim(kategoria, titulli, pershkrimi, cmimi_input, kontakti, lokacioni, detaje_specifike, foto_paths_str)
-                st.success("Njoftimi u publikua me sukses!")
-            else:
-                st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
+            kontakti = st.text_input("Numri i Telefonit (p.sh. 069XXXXXXX)")
+            uploaded_files = st.file_uploader("Ngarko foto (Mund të zgjedhësh disa njëkohësisht)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+            
+            submit_button = st.form_submit_button(label="Publiko Njoftimin Tani")
+            
+            if submit_button:
+                if titulli and pershkrimi and kontakti:
+                    foto_paths_list = []
+                    if uploaded_files:
+                        for uploaded_file in uploaded_files:
+                            timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                            filename = f"{timestamp_str}_{uploaded_file.name}"
+                            f_path = os.path.join(UPLOAD_DIR, filename)
+                            with open(f_path, "wb") as f:
+                                f.write(uploaded_file.getbuffer())
+                            foto_paths_list.append(f_path)
+                    
+                    foto_paths_str = ",".join(foto_paths_list)
+                    shto_njoftim(st.session_state['username'], kategoria, titulli, pershkrimi, cmimi_input, kontakti, lokacioni, detaje_specifike, foto_paths_str)
+                    st.success("Njoftimi u publikua me sukses!")
+                else:
+                    st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
 
 # --- FOOTER I FAQES ---
 st.markdown("""
