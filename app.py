@@ -109,9 +109,15 @@ def init_db():
         CREATE TABLE IF NOT EXISTS perdoruesit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE,
-            password TEXT
+            password TEXT,
+            email TEXT
         )
     ''')
+    # Përputhshmëri me databazat ekzistuese nëse kolona email mungon
+    try:
+        cursor.execute("ALTER TABLE perdoruesit ADD COLUMN email TEXT")
+    except:
+        pass
     conn.commit()
     conn.close()
 
@@ -124,11 +130,11 @@ if 'username' not in st.session_state:
 if 'admin_logged_in' not in st.session_state:
     st.session_state['admin_logged_in'] = False
 
-def regjistro_user(username, password):
+def regjistro_user(username, password, email):
     try:
         conn = sqlite3.connect('njoftime.db')
         cursor = conn.cursor()
-        cursor.execute("INSERT INTO perdoruesit (username, password) VALUES (?, ?)", (username, password))
+        cursor.execute("INSERT INTO perdoruesit (username, password, email) VALUES (?, ?, ?)", (username, password, email))
         conn.commit()
         conn.close()
         return True
@@ -176,11 +182,10 @@ def merr_njoftimet():
 
 def merr_perdoruesit():
     conn = sqlite3.connect('njoftime.db')
-    df = pd.read_sql_query("SELECT id, username FROM perdoruesit", conn)
+    df = pd.read_sql_query("SELECT id, username, email FROM perdoruesit", conn)
     conn.close()
     return df
 
-# Kontrollojmë nëse URL përmban ?page=admin
 query_params = st.query_params
 is_admin_route = query_params.get("page") == "admin"
 
@@ -197,7 +202,6 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Nëse jemi te rruga /admin (pra ?page=admin)
 if is_admin_route:
     st.title("🔐 Paneli i Administrimit (Admin Login)")
     
@@ -207,7 +211,6 @@ if is_admin_route:
             a_pass = st.text_input("Admin Password", type="password")
             a_submit = st.form_submit_button("Hyr në Admin")
             if a_submit:
-                # Këtu vendosim kredencialet fikse të adminit (p.sh. username: admin, password: 123)
                 if a_user == "admin" and a_pass == "12345":
                     st.session_state['admin_logged_in'] = True
                     st.success("U kyçët si Administrator!")
@@ -230,7 +233,7 @@ if is_admin_route:
         col_a2.metric("Gjithsej Njoftime", len(df_all_njoftime))
         st.divider()
         
-        st.write("### Lista e Përdoruesve")
+        st.write("### Lista e Përdoruesve & Email-ve")
         st.dataframe(df_users, use_container_width=True)
         
         st.write("### Menaxhimi i Njoftimeve (Mund të fshish çdo njoftim)")
@@ -245,7 +248,6 @@ if is_admin_route:
                     st.rerun()
 
 else:
-    # Faqja normale e Marketplace për përdoruesit e thjeshtë
     st.sidebar.title("Llogaria Ime")
     if not st.session_state['user_logged_in']:
         auth_mode = st.sidebar.radio("Zgjidhni veprimin", ["Kyçu (Login)", "Regjistrohu (Register)"])
@@ -265,17 +267,18 @@ else:
                         st.error("Username ose fjalëkalim i gabuar!")
         else:
             with st.sidebar.form("register_form"):
-                r_user = st.text_input("Krijo Username")
-                r_pass = st.text_input("Krijo Fjalëkalim", type="password")
+                r_user = st.text_input("Krijo Username *")
+                r_email = st.text_input("Adresa Email *")
+                r_pass = st.text_input("Krijo Fjalëkalim *", type="password")
                 r_submit = st.form_submit_button("Regjistrohu")
                 if r_submit:
-                    if r_user and r_pass:
-                        if regjistro_user(r_user, r_pass):
+                    if r_user and r_email and r_pass:
+                        if regjistro_user(r_user, r_pass, r_email):
                             st.success("Regjistrimi u krye! Tani mund të kyçeni.")
                         else:
-                            st.error("Ky username ekziston tashmë!")
+                            st.error("Ky username ose email ekziston tashmë!")
                     else:
-                        st.error("Plotësoni të gjitha fushat.")
+                        st.error("Ju lutem plotësoni të gjitha fushat e detyrueshme (*): Username, Email dhe Fjalëkalimi.")
     else:
         st.sidebar.success(f"Përshëndetje, **{st.session_state['username']}**!")
         if st.sidebar.button("Dil (Logout)"):
@@ -375,7 +378,6 @@ else:
                             b1.markdown(f"[WhatsApp]({w_link})", unsafe_allow_html=True)
                             b2.markdown(f"[Telefono](tel:{telefon})", unsafe_allow_html=True)
                     
-                    # Lejo fshirjen nëse përdoruesi është pronar i njoftimit
                     if st.session_state['user_logged_in'] and st.session_state['username'] == row['perdoruesi']:
                         if st.button("Fshi Njoftimin Tim", key=f"fshi_{row['id']}"):
                             fshi_njoftimin(row['id'], row['foto_paths'])
