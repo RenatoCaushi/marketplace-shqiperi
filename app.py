@@ -19,41 +19,43 @@ st.markdown("""
     <style>
     .hero-container {
         background: linear-gradient(135deg, #1E3A8A 0%, #3B82F6 100%);
-        padding: 30px;
+        padding: 35px 30px;
         border-radius: 16px;
         color: white;
-        margin-bottom: 25px;
-        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.3);
+        margin-bottom: 30px;
+        box-shadow: 0 10px 25px -5px rgba(59, 130, 246, 0.25);
     }
     .hero-title {
-        font-size: 36px;
+        font-size: 38px;
         font-weight: 800;
-        margin-bottom: 5px;
+        margin-bottom: 8px;
+        letter-spacing: -0.5px;
     }
     .hero-subtitle {
         font-size: 16px;
         opacity: 0.9;
+        font-weight: 400;
     }
     .card-box {
         background-color: #ffffff;
         border: 1px solid #E5E7EB;
-        padding: 20px;
-        border-radius: 14px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
-        margin-bottom: 20px;
+        padding: 22px;
+        border-radius: 16px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
+        margin-bottom: 24px;
         height: 100%;
-        transition: all 0.3s ease;
+        transition: all 0.25s ease-in-out;
     }
     .card-box:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.08);
-        border-color: #3B82F6;
+        box-shadow: 0 12px 24px -4px rgba(59, 130, 246, 0.12);
+        border-color: #93C5FD;
     }
-    .badge-automjete { background-color: #FEF3C7; color: #92400E; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-    .badge-pasuri { background-color: #D1FAE5; color: #065F46; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-    .badge-elektronikë { background-color: #EDE9FE; color: #5B21B6; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-    .badge-punë { background-color: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-    .badge-tjetër { background-color: #F3F4F6; color: #374151; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+    .badge-automjete { background-color: #EFF6FF; color: #1D4ED8; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #BFDBFE; }
+    .badge-pasuri { background-color: #F0FDF4; color: #15803D; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #BBF7D0; }
+    .badge-elektronikë { background-color: #FAF5FF; color: #7E22CE; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E9D5FF; }
+    .badge-punë { background-color: #FEF2F2; color: #B91C1C; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #FECACA; }
+    .badge-tjetër { background-color: #F8FAFC; color: #475569; padding: 5px 12px; border-radius: 20px; font-weight: 600; font-size: 12px; border: 1px solid #E2E8F0; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -113,25 +115,21 @@ def merr_njoftimet():
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">Marketplace Shqipëri</div>
-        <div class="hero-subtitle">Portal i avancuar njoftimesh për Automjete, Pasuri të Paluajtshme, Elektronikë dhe Shërbime.</div>
+        <div class="hero-subtitle">Platforma më e pastër dhe moderne për të shfletuar dhe postuar njoftimet tuaja.</div>
     </div>
 """, unsafe_allow_html=True)
 
-if 'favorites' not in st.session_state:
-    st.session_state.favorites = []
-
-tab1, tab2, tab3 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri", "Njoftimet e Ruajtura ❤️"])
+tab1, tab2 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri"])
 
 with tab1:
     df = merr_njoftimet()
     if not df.empty:
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Gjithsej Njoftime", len(df))
-        col_m2.metric("Automjete & Pasuri", len(df[df['kategoria'].isin(['Automjete', 'Pasuri të Paluajtshme'])]))
-        col_m3.metric("Favoritet e Ruajtura", len(st.session_state.favorites))
+        col_m1, col_m2 = st.columns(2)
+        col_m1.metric("Gjithsej Njoftime Aktive", len(df))
+        col_m2.metric("Qytete të Përfshira", df['lokacioni'].nunique() if 'lokacioni' in df else 0)
         st.divider()
         
-        st.sidebar.header("Filtrimi i Avancuar")
+        st.sidebar.header("Filtrimi i Njoftimeve")
         kategorite = ["Të gjitha"] + list(df['kategoria'].unique())
         zgjidh_kategori = st.sidebar.selectbox("Kategoria", kategorite)
         
@@ -172,7 +170,6 @@ with tab1:
                 row = njoftime_list[i]
                 st.markdown('<div class="card-box">', unsafe_allow_html=True)
                 
-                # Galeria e fotove
                 foto_paths = row['foto_paths'].split(",") if row['foto_paths'] else []
                 valid_fotos = [p for p in foto_paths if p and os.path.exists(p)]
                 if valid_fotos:
@@ -193,7 +190,7 @@ with tab1:
                 
                 st.markdown(f'<span class="{badge_class}">{cat}</span>', unsafe_allow_html=True)
                 st.markdown(f"### {row['titulli']}")
-                p_shkurtër = row['pershkrimi'][:100] + "..." if len(row['pershkrimi']) > 100 else row['pershkrimi']
+                p_shkurtër = row['pershkrimi'][:110] + "..." if len(row['pershkrimi']) > 110 else row['pershkrimi']
                 st.write(p_shkurtër)
                 
                 if pd.notna(row['cmimi']) and row['cmimi'] > 0:
@@ -213,18 +210,8 @@ with tab1:
                         b1.markdown(f"[WhatsApp]({w_link})", unsafe_allow_html=True)
                         b2.markdown(f"[Telefono](tel:{telefon})", unsafe_allow_html=True)
                 
-                fav_label = "❤️ Hiq nga të preferuarat" if row['id'] in st.session_state.favorites else "🤍 Ruaj te të preferuarat"
-                if st.button(fav_label, key=f"fav_{row['id']}"):
-                    if row['id'] in st.session_state.favorites:
-                        st.session_state.favorites.remove(row['id'])
-                    else:
-                        st.session_state.favorites.append(row['id'])
-                    st.rerun()
-                    
                 if st.button("Fshi Njoftimin", key=f"fshi_{row['id']}"):
                     fshi_njoftimin(row['id'], row['foto_paths'])
-                    if row['id'] in st.session_state.favorites:
-                        st.session_state.favorites.remove(row['id'])
                     st.success("U fshi!")
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -254,7 +241,7 @@ with tab1:
                     
                     st.markdown(f'<span class="{badge_class2}">{cat2}</span>', unsafe_allow_html=True)
                     st.markdown(f"### {row2['titulli']}")
-                    p_shkurtër2 = row2['pershkrimi'][:100] + "..." if len(row2['pershkrimi']) > 100 else row2['pershkrimi']
+                    p_shkurtër2 = row2['pershkrimi'][:110] + "..." if len(row2['pershkrimi']) > 110 else row2['pershkrimi']
                     st.write(p_shkurtër2)
                     
                     if pd.notna(row2['cmimi']) and row2['cmimi'] > 0:
@@ -274,18 +261,8 @@ with tab1:
                             bx1.markdown(f"[WhatsApp]({w_link2})", unsafe_allow_html=True)
                             bx2.markdown(f"[Telefono](tel:{telefon2})", unsafe_allow_html=True)
                     
-                    fav_label2 = "❤️ Hiq nga të preferuarat" if row2['id'] in st.session_state.favorites else "🤍 Ruaj te të preferuarat"
-                    if st.button(fav_label2, key=f"fav_{row2['id']}"):
-                        if row2['id'] in st.session_state.favorites:
-                            st.session_state.favorites.remove(row2['id'])
-                        else:
-                            st.session_state.favorites.append(row2['id'])
-                        st.rerun()
-                        
                     if st.button("Fshi Njoftimin", key=f"fshi_{row2['id']}"):
                         fshi_njoftimin(row2['id'], row2['foto_paths'])
-                        if row2['id'] in st.session_state.favorites:
-                            st.session_state.favorites.remove(row2['id'])
                         st.success("U fshi!")
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
@@ -344,32 +321,9 @@ with tab2:
             else:
                 st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
 
-with tab3:
-    st.subheader("Njoftimet e Ruajtura (Të Preferuarat ❤️)")
-    if st.session_state.favorites:
-        df_all = merr_njoftimet()
-        df_favs = df_all[df_all['id'].isin(st.session_state.favorites)]
-        
-        fav_list = df_favs.to_dict('records')
-        for row in fav_list:
-            st.markdown('<div class="card-box">', unsafe_allow_html=True)
-            st.markdown(f"### {row['titulli']}")
-            st.write(row['pershkrimi'][:150])
-            if pd.notna(row['cmimi']) and row['cmimi'] > 0:
-                st.success(f"Çmimi: {row['cmimi']} €")
-            else:
-                st.info("Çmimi: Me Marrëveshje")
-            st.caption(f"Lokacioni: {row['lokacioni']} | Telefoni: {row['kontakti']}")
-            if st.button("Hiq nga të preferuarat", key=f"remove_fav_{row['id']}"):
-                st.session_state.favorites.remove(row['id'])
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("Nuk keni ruajtur asnjë njoftim të preferuar ende.")
-
 st.markdown("""
     <hr style="margin-top: 40px; margin-bottom: 20px;">
-    <div style="text-align: center; color: #6B7280; font-size: 14px; padding-bottom: 20px;">
+    <div style="text-align: center; color: #64748B; font-size: 14px; padding-bottom: 20px;">
         <p><b>Marketplace Shqipëri</b> &copy; 2026 | Të gjitha të drejtat e rezervuara.</p>
     </div>
 """, unsafe_allow_html=True)
