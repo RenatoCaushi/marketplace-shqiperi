@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import sqlite3
 import os
@@ -15,9 +16,32 @@ st.set_page_config(
     layout="wide"
 )
 
+# Skript që fshin çdo element, badge ose logo të Streamlit Cloud në kohë reale
+components.html("""
+    <script>
+    function removeElements() {
+        const doc = window.parent.document;
+        const selectors = [
+            '#MainMenu', 'header', 'footer', 
+            '[data-testid="stStatusWidget"]', 
+            '[data-testid="stToolbar"]', 
+            '[data-testid="stDecoration"]',
+            'div[class*="viewerBadge"]',
+            '.stAppToolbar',
+            'a[href*="streamlit.cloud"]',
+            'div:has(> a[href*="streamlit.cloud"])'
+        ];
+        selectors.forEach(selector => {
+            doc.querySelectorAll(selector).forEach(el => el.remove());
+        });
+    }
+    setInterval(removeElements, 100);
+    </script>
+""", height=0, width=0)
+
 st.markdown("""
     <style>
-    /* Fsheh totalisht treguesin e Streamlit, menunë, toolbar dhe panelin e autorit poshtë djathtas */
+    /* Fsheh totalisht treguesin e Streamlit dhe toolbar */
     #MainMenu, header, footer, 
     [data-testid="stStatusWidget"], 
     [data-testid="stToolbar"], 
