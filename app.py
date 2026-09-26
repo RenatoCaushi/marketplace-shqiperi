@@ -49,9 +49,10 @@ st.markdown("""
         box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.08);
         border-color: #3B82F6;
     }
+    .badge-automjete { background-color: #FEF3C7; color: #92400E; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+    .badge-pasuri { background-color: #D1FAE5; color: #065F46; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
+    .badge-elektronikë { background-color: #EDE9FE; color: #5B21B6; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
     .badge-punë { background-color: #DBEAFE; color: #1E40AF; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-    .badge-makina { background-color: #FEF3C7; color: #92400E; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
-    .badge-shtëpi { background-color: #D1FAE5; color: #065F46; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
     .badge-tjetër { background-color: #F3F4F6; color: #374151; padding: 4px 10px; border-radius: 20px; font-weight: 600; font-size: 12px; }
     </style>
 """, unsafe_allow_html=True)
@@ -70,7 +71,7 @@ def init_db():
             lokacioni TEXT,
             detaje_specifike TEXT,
             data TEXT,
-            foto_path TEXT
+            foto_paths TEXT
         )
     ''')
     conn.commit()
@@ -78,28 +79,30 @@ def init_db():
 
 init_db()
 
-def shto_njoftim(kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_path):
+def shto_njoftim(kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_paths_str):
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
     data_aktuale = datetime.now().strftime("%Y-%m-%d %H:%M")
     cursor.execute('''
-        INSERT INTO njoftime (kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data, foto_path)
+        INSERT INTO njoftime (kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data, foto_paths)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data_aktuale, foto_path))
+    ''', (kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data_aktuale, foto_paths_str))
     conn.commit()
     conn.close()
 
-def fshi_njoftimin(njoftim_id, foto_path):
+def fshi_njoftimin(njoftim_id, foto_paths_str):
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
     cursor.execute("DELETE FROM njoftime WHERE id = ?", (njoftim_id,))
     conn.commit()
     conn.close()
-    if foto_path and os.path.exists(foto_path):
-        try:
-            os.remove(foto_path)
-        except:
-            pass
+    if foto_paths_str:
+        for path in foto_paths_str.split(","):
+            if path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                except:
+                    pass
 
 def merr_njoftimet():
     conn = sqlite3.connect('njoftime.db')
@@ -110,26 +113,34 @@ def merr_njoftimet():
 st.markdown("""
     <div class="hero-container">
         <div class="hero-title">Marketplace Shqipëri</div>
-        <div class="hero-subtitle">Platforma më e shpejtë për të blerë, shitur dhe gjetur shërbime në Shqipëri.</div>
+        <div class="hero-subtitle">Portal i avancuar njoftimesh për Automjete, Pasuri të Paluajtshme, Elektronikë dhe Shërbime.</div>
     </div>
 """, unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri"])
+if 'favorites' not in st.session_state:
+    st.session_state.favorites = []
+
+tab1, tab2, tab3 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri", "Njoftimet e Ruajtura ❤️"])
 
 with tab1:
     df = merr_njoftimet()
     if not df.empty:
         col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Gjithsej Njoftime Aktive", len(df))
-        col_m2.metric("Makina & Shtëpi", len(df[df['kategoria'].isin(['Makina', 'Shtëpi & Pasuri të Paluajtshme'])]))
-        col_m3.metric("Mundësi Punësimi", len(df[df['kategoria'] == 'Punë']))
+        col_m1.metric("Gjithsej Njoftime", len(df))
+        col_m2.metric("Automjete & Pasuri", len(df[df['kategoria'].isin(['Automjete', 'Pasuri të Paluajtshme'])]))
+        col_m3.metric("Favoritet e Ruajtura", len(st.session_state.favorites))
         st.divider()
         
-        st.sidebar.header("Filtrimi i Njoftimeve")
+        st.sidebar.header("Filtrimi i Avancuar")
         kategorite = ["Të gjitha"] + list(df['kategoria'].unique())
         zgjidh_kategori = st.sidebar.selectbox("Kategoria", kategorite)
+        
         lokacionet = ["Të gjitha"] + list(df['lokacioni'].dropna().unique())
-        zgjidh_lokacion = st.sidebar.selectbox("Lokacioni", lokacionet)
+        zgjidh_lokacion = st.sidebar.selectbox("Qyteti / Lokacioni", lokacionet)
+        
+        max_cmimi_db = float(df['cmimi'].max()) if not df['cmimi'].dropna().empty else 10000.0
+        min_c, max_c = st.sidebar.slider("Filtro sipas Çmimit (€)", 0.0, max(max_cmimi_db, 1000.0), (0.0, max(max_cmimi_db, 1000.0)))
+        
         search_query = st.sidebar.text_input("Kërko fjalë kyçe")
         renditja = st.sidebar.selectbox("Renditja", ["Të rejat fillimisht", "Çmimi: Më i lirë -> Më i shtrenjtë", "Çmimi: Më i shtrenjtë -> Më i lirë"])
         
@@ -138,6 +149,9 @@ with tab1:
             filtered_df = filtered_df[filtered_df['kategoria'] == zgjidh_kategori]
         if zgjidh_lokacion != "Të gjitha":
             filtered_df = filtered_df[filtered_df['lokacioni'] == zgjidh_lokacion]
+        
+        filtered_df = filtered_df[(filtered_df['cmimi'] >= min_c) & (filtered_df['cmimi'] <= max_c)]
+        
         if search_query:
             filtered_df = filtered_df[
                 filtered_df['titulli'].str.contains(search_query, case=False, na=False) |
@@ -157,27 +171,36 @@ with tab1:
             with col_grid1:
                 row = njoftime_list[i]
                 st.markdown('<div class="card-box">', unsafe_allow_html=True)
-                if row['foto_path'] and os.path.exists(row['foto_path']):
+                
+                # Galeria e fotove
+                foto_paths = row['foto_paths'].split(",") if row['foto_paths'] else []
+                valid_fotos = [p for p in foto_paths if p and os.path.exists(p)]
+                if valid_fotos:
+                    selected_img_path = st.selectbox("Foto", valid_fotos, key=f"img_sel_{row['id']}")
                     try:
-                        img = Image.open(row['foto_path'])
-                        st.image(img, use_container_width=True)
+                        st.image(Image.open(selected_img_path), use_container_width=True)
                     except:
-                        st.info("[Pa foto]")
+                        st.info("[Gabim në ngarkimin e fotos]")
                 else:
                     st.info("[Pa foto]")
+                
                 cat = row['kategoria']
                 badge_class = "badge-tjetër"
-                if cat == "Punë": badge_class = "badge-punë"
-                elif cat == "Makina": badge_class = "badge-makina"
-                elif "Shtëpi" in cat: badge_class = "badge-shtëpi"
+                if cat == "Automjete": badge_class = "badge-automjete"
+                elif cat == "Pasuri të Paluajtshme": badge_class = "badge-pasuri"
+                elif cat == "Elektronikë": badge_class = "badge-elektronikë"
+                elif cat == "Punë & Shërbime": badge_class = "badge-punë"
+                
                 st.markdown(f'<span class="{badge_class}">{cat}</span>', unsafe_allow_html=True)
                 st.markdown(f"### {row['titulli']}")
                 p_shkurtër = row['pershkrimi'][:100] + "..." if len(row['pershkrimi']) > 100 else row['pershkrimi']
                 st.write(p_shkurtër)
+                
                 if pd.notna(row['cmimi']) and row['cmimi'] > 0:
                     st.success(f"Çmimi: {row['cmimi']} €")
                 else:
                     st.info("Çmimi: Me Marrëveshje")
+                    
                 with st.expander("Shiko Detajet e Plota & Kontaktin"):
                     st.write(f"**Përshkrimi i plotë:** {row['pershkrimi']}")
                     if row['detaje_specifike']:
@@ -185,12 +208,23 @@ with tab1:
                     st.caption(f"Lokacioni: {row['lokacioni']} | Telefoni: {row['kontakti']} | Data: {row['data']}")
                     telefon = str(row['kontakti']).strip()
                     if telefon.isdigit() or telefon.startswith("+"):
-                        w_link = f"https://wa.me/{telefon.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row['titulli']}"
+                        w_link = f"https://wa.me/{telefon.replace('+', '')}?text=Përshëndetje, jam i interesuar për njoftimin: {row['titulli']}"
                         b1, b2 = st.columns(2)
                         b1.markdown(f"[WhatsApp]({w_link})", unsafe_allow_html=True)
                         b2.markdown(f"[Telefono](tel:{telefon})", unsafe_allow_html=True)
+                
+                fav_label = "❤️ Hiq nga të preferuarat" if row['id'] in st.session_state.favorites else "🤍 Ruaj te të preferuarat"
+                if st.button(fav_label, key=f"fav_{row['id']}"):
+                    if row['id'] in st.session_state.favorites:
+                        st.session_state.favorites.remove(row['id'])
+                    else:
+                        st.session_state.favorites.append(row['id'])
+                    st.rerun()
+                    
                 if st.button("Fshi Njoftimin", key=f"fshi_{row['id']}"):
-                    fshi_njoftimin(row['id'], row['foto_path'])
+                    fshi_njoftimin(row['id'], row['foto_paths'])
+                    if row['id'] in st.session_state.favorites:
+                        st.session_state.favorites.remove(row['id'])
                     st.success("U fshi!")
                     st.rerun()
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -199,27 +233,35 @@ with tab1:
                 with col_grid2:
                     row2 = njoftime_list[i + 1]
                     st.markdown('<div class="card-box">', unsafe_allow_html=True)
-                    if row2['foto_path'] and os.path.exists(row2['foto_path']):
+                    
+                    foto_paths2 = row2['foto_paths'].split(",") if row2['foto_paths'] else []
+                    valid_fotos2 = [p for p in foto_paths2 if p and os.path.exists(p)]
+                    if valid_fotos2:
+                        selected_img_path2 = st.selectbox("Foto", valid_fotos2, key=f"img_sel2_{row2['id']}")
                         try:
-                            img2 = Image.open(row2['foto_path'])
-                            st.image(img2, use_container_width=True)
+                            st.image(Image.open(selected_img_path2), use_container_width=True)
                         except:
-                            st.info("[Pa foto]")
+                            st.info("[Gabim në ngarkimin e fotos]")
                     else:
                         st.info("[Pa foto]")
+                        
                     cat2 = row2['kategoria']
                     badge_class2 = "badge-tjetër"
-                    if cat2 == "Punë": badge_class2 = "badge-punë"
-                    elif cat2 == "Makina": badge_class2 = "badge-makina"
-                    elif "Shtëpi" in cat2: badge_class2 = "badge-shtëpi"
+                    if cat2 == "Automjete": badge_class2 = "badge-automjete"
+                    elif cat2 == "Pasuri të Paluajtshme": badge_class2 = "badge-pasuri"
+                    elif cat2 == "Elektronikë": badge_class2 = "badge-elektronikë"
+                    elif cat2 == "Punë & Shërbime": badge_class2 = "badge-punë"
+                    
                     st.markdown(f'<span class="{badge_class2}">{cat2}</span>', unsafe_allow_html=True)
                     st.markdown(f"### {row2['titulli']}")
                     p_shkurtër2 = row2['pershkrimi'][:100] + "..." if len(row2['pershkrimi']) > 100 else row2['pershkrimi']
                     st.write(p_shkurtër2)
+                    
                     if pd.notna(row2['cmimi']) and row2['cmimi'] > 0:
                         st.success(f"Çmimi: {row2['cmimi']} €")
                     else:
                         st.info("Çmimi: Me Marrëveshje")
+                        
                     with st.expander("Shiko Detajet e Plota & Kontaktin"):
                         st.write(f"**Përshkrimi i plotë:** {row2['pershkrimi']}")
                         if row2['detaje_specifike']:
@@ -227,38 +269,50 @@ with tab1:
                         st.caption(f"Lokacioni: {row2['lokacioni']} | Telefoni: {row2['kontakti']} | Data: {row2['data']}")
                         telefon2 = str(row2['kontakti']).strip()
                         if telefon2.isdigit() or telefon2.startswith("+"):
-                            w_link2 = f"https://wa.me/{telefon2.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row2['titulli']}"
+                            w_link2 = f"https://wa.me/{telefon2.replace('+', '')}?text=Përshëndetje, jam i interesuar për njoftimin: {row2['titulli']}"
                             bx1, bx2 = st.columns(2)
                             bx1.markdown(f"[WhatsApp]({w_link2})", unsafe_allow_html=True)
                             bx2.markdown(f"[Telefono](tel:{telefon2})", unsafe_allow_html=True)
+                    
+                    fav_label2 = "❤️ Hiq nga të preferuarat" if row2['id'] in st.session_state.favorites else "🤍 Ruaj te të preferuarat"
+                    if st.button(fav_label2, key=f"fav_{row2['id']}"):
+                        if row2['id'] in st.session_state.favorites:
+                            st.session_state.favorites.remove(row2['id'])
+                        else:
+                            st.session_state.favorites.append(row2['id'])
+                        st.rerun()
+                        
                     if st.button("Fshi Njoftimin", key=f"fshi_{row2['id']}"):
-                        fshi_njoftimin(row2['id'], row2['foto_path'])
+                        fshi_njoftimin(row2['id'], row2['foto_paths'])
+                        if row2['id'] in st.session_state.favorites:
+                            st.session_state.favorites.remove(row2['id'])
                         st.success("U fshi!")
                         st.rerun()
                     st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.info("Nuk ka asnjë njoftim të postuar ende. Kaloni te skeda e dytë për të postuar të parin!")
+        st.info("Nuk ka asnjë njoftim të postuar ende.")
 
 with tab2:
     st.subheader("Shto Njoftim të Ri në Platformë")
     with st.form("formular_njoftimi", clear_on_submit=True):
-        kategoria = st.selectbox("Kategoria e Njoftimit", ["Punë", "Makina", "Shtëpi & Pasuri të Paluajtshme", "Elektronikë", "Shërbime Të Tjera"])
-        titulli = st.text_input("Titulli i Njoftimit (p.sh. Shitet Audi A4 / Inxhinier Software)")
+        kategoria = st.selectbox("Kategoria e Njoftimit", ["Automjete", "Pasuri të Paluajtshme", "Elektronikë", "Punë & Shërbime", "Shtëpi & Kopsht", "Të Tjera"])
+        titulli = st.text_input("Titulli i Njoftimit (p.sh. Shitet Audi A4 / Apartament 2+1)")
         pershkrimi = st.text_area("Përshkrimi i detajuar")
         
         detaje_specifike = ""
-        if kategoria == "Makina":
-            col_m1, col_m2 = st.columns(2)
+        if kategoria == "Automjete":
+            col_m1, col_m2, col_m3 = st.columns(3)
             vit_prodhimi = col_m1.text_input("Viti i Prodhimit (p.sh. 2018)")
             km = col_m2.text_input("Kilometrazhi (p.sh. 150000 km)")
-            detaje_specifike = f"Viti: {vit_prodhimi} | KM: {km}"
-        elif kategoria == "Shtëpi & Pasuri të Paluajtshme":
+            kambio = col_m3.selectbox("Kambio", ["Automatike", "Manuale"])
+            detaje_specifike = f"Viti: {vit_prodhimi} | KM: {km} | Kambio: {kambio}"
+        elif kategoria == "Pasuri të Paluajtshme":
             col_s1, col_s2 = st.columns(2)
             sipfaqja = col_s1.text_input("Sipërfaqja (p.sh. 85 m²)")
             dhoma = col_s2.text_input("Kategoria/Dhomat (p.sh. 2+1)")
             detaje_specifike = f"Sipërfaqja: {sipfaqja} | Dhomat: {dhoma}"
-        elif kategoria == "Punë":
-            lloji_punes = st.selectbox("Lloji i Orarit", ["Full-time", "Part-time", "Remote / Online"])
+        elif kategoria == "Punë & Shërbime":
+            lloji_punes = st.selectbox("Lloji i Orarit", ["Full-time", "Part-time", "Freelance / Shërbim"])
             detaje_specifike = f"Orari: {lloji_punes}"
 
         c_p1, c_p2 = st.columns(2)
@@ -268,23 +322,50 @@ with tab2:
             lokacioni = st.selectbox("Lokacioni (Qyteti)", ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier", "Korçë", "Gjirokastër", "Tjetër"])
             
         kontakti = st.text_input("Numri i Telefonit (p.sh. 069XXXXXXX)")
-        uploaded_file = st.file_uploader("Ngarko foto (Opsionale)", type=["jpg", "jpeg", "png"])
+        uploaded_files = st.file_uploader("Ngarko foto (Mund të zgjedhësh disa njëkohësisht)", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
         
         submit_button = st.form_submit_button(label="Publiko Njoftimin Tani")
         
         if submit_button:
             if titulli and pershkrimi and kontakti:
-                foto_path = None
-                if uploaded_file is not None:
-                    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    filename = f"{timestamp_str}_{uploaded_file.name}"
-                    foto_path = os.path.join(UPLOAD_DIR, filename)
-                    with open(foto_path, "wb") as f:
-                        f.write(uploaded_file.getbuffer())
-                shto_njoftim(kategoria, titulli, pershkrimi, cmimi_input, kontakti, lokacioni, detaje_specifike, foto_path)
+                foto_paths_list = []
+                if uploaded_files:
+                    for uploaded_file in uploaded_files:
+                        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                        filename = f"{timestamp_str}_{uploaded_file.name}"
+                        f_path = os.path.join(UPLOAD_DIR, filename)
+                        with open(f_path, "wb") as f:
+                            f.write(uploaded_file.getbuffer())
+                        foto_paths_list.append(f_path)
+                
+                foto_paths_str = ",".join(foto_paths_list)
+                shto_njoftim(kategoria, titulli, pershkrimi, cmimi_input, kontakti, lokacioni, detaje_specifike, foto_paths_str)
                 st.success("Njoftimi u publikua me sukses!")
             else:
                 st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
+
+with tab3:
+    st.subheader("Njoftimet e Ruajtura (Të Preferuarat ❤️)")
+    if st.session_state.favorites:
+        df_all = merr_njoftimet()
+        df_favs = df_all[df_all['id'].isin(st.session_state.favorites)]
+        
+        fav_list = df_favs.to_dict('records')
+        for row in fav_list:
+            st.markdown('<div class="card-box">', unsafe_allow_html=True)
+            st.markdown(f"### {row['titulli']}")
+            st.write(row['pershkrimi'][:150])
+            if pd.notna(row['cmimi']) and row['cmimi'] > 0:
+                st.success(f"Çmimi: {row['cmimi']} €")
+            else:
+                st.info("Çmimi: Me Marrëveshje")
+            st.caption(f"Lokacioni: {row['lokacioni']} | Telefoni: {row['kontakti']}")
+            if st.button("Hiq nga të preferuarat", key=f"remove_fav_{row['id']}"):
+                st.session_state.favorites.remove(row['id'])
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("Nuk keni ruajtur asnjë njoftim të preferuar ende.")
 
 st.markdown("""
     <hr style="margin-top: 40px; margin-bottom: 20px;">
