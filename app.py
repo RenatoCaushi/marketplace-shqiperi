@@ -152,7 +152,7 @@ def verifiko_user(username, password):
     user = cursor.fetchone()
     conn.close()
     if user:
-        return user[0], user[1] # Kthen (user_id, username)
+        return user[0], user[1]
     return None, None
 
 def shto_njoftim(user_id, perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_paths_str):
@@ -186,6 +186,12 @@ def merr_njoftimet():
     conn.close()
     if not df.empty and 'cmimi' in df.columns:
         df['cmimi'] = pd.to_numeric(df['cmimi'], errors='coerce').fillna(0.0)
+    return df
+
+def merr_perdoruesit():
+    conn = sqlite3.connect('njoftime.db')
+    df = pd.read_sql_query("SELECT id, username, email FROM perdoruesit ORDER BY id DESC", conn)
+    conn.close()
     return df
 
 def merr_njoftimet_dhe_perdoruesit():
@@ -244,12 +250,24 @@ if is_admin_route:
             st.rerun()
             
         st.divider()
+        
+        # 1. Shfaqja e të gjithë përdoruesve të regjistruar
+        st.write("### 👤 Përdoruesit e Regjistruar në Platformë")
+        df_perdoruesit = merr_perdoruesit()
+        if not df_perdoruesit.empty:
+            st.dataframe(df_perdoruesit, use_container_width=True)
+        else:
+            st.info("Nuk ka ende përdorues të regjistruar.")
+            
+        st.divider()
+        
+        # 2. Shfaqja e njoftimeve dhe përdoruesve me JOIN
         st.write("### 📋 Njoftimet dhe Përdoruesit që i kanë postuar")
         df_kombinuar = merr_njoftimet_dhe_perdoruesit()
         if not df_kombinuar.empty:
             st.dataframe(df_kombinuar, use_container_width=True)
         else:
-            st.info("Nuk ka ende njoftime ose përdorues të regjistruar në databazë.")
+            st.info("Nuk ka ende njoftime të postuara.")
             
         st.divider()
         st.subheader("Fshij Njoftimet Sipas ID-së")
