@@ -124,6 +124,7 @@ def init_db():
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
     
+    # Krijimi i tabelës kryesore nëse nuk ekziston
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,7 +141,10 @@ def init_db():
         )
     ''')
     
-    kolonat_ekzistuese = [col[1] for col in cursor.execute("PRAGMA table_info(njoftime)").fetchall()]
+    # Kontrollojmë dhe shtojmë secilën kolonë nëse mungon në tabelën ekzistuese
+    cursor.execute("PRAGMA table_info(njoftime)")
+    kolonat_ekzistuese = [col[1] for col in cursor.fetchall()]
+    
     kolonat_nevojshme = {
         "perdoruesi": "TEXT",
         "kategoria": "TEXT",
@@ -161,6 +165,7 @@ def init_db():
             except:
                 pass
 
+    # Krijimi i tabelës së përdoruesve
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS perdoruesit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,10 +174,14 @@ def init_db():
             email TEXT
         )
     ''')
-    try:
-        cursor.execute("ALTER TABLE perdoruesit ADD COLUMN email TEXT")
-    except:
-        pass
+    
+    cursor.execute("PRAGMA table_info(perdoruesit)")
+    kolonat_user = [col[1] for col in cursor.fetchall()]
+    if "email" not in kolonat_user:
+        try:
+            cursor.execute("ALTER TABLE perdoruesit ADD COLUMN email TEXT")
+        except:
+            pass
         
     conn.commit()
     conn.close()
