@@ -94,8 +94,18 @@ def init_db():
     cursor = conn.cursor()
     
     cursor.execute('''
+        CREATE TABLE IF NOT EXISTS perdoruesit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            email TEXT
+        )
+    ''')
+    
+    cursor.execute('''
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
             perdoruesi TEXT,
             kategoria TEXT,
             titulli TEXT,
@@ -105,16 +115,8 @@ def init_db():
             lokacioni TEXT,
             detaje_specifike TEXT,
             data TEXT,
-            foto_paths TEXT
-        )
-    ''')
-    
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS perdoruesit (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE,
-            password TEXT,
-            email TEXT
+            foto_paths TEXT,
+            FOREIGN KEY(user_id) REFERENCES perdoruesit(id)
         )
     ''')
     conn.commit()
@@ -122,8 +124,11 @@ def init_db():
 
 init_db()
 
+# --- SESSION STATES ---
 if 'user_logged_in' not in st.session_state:
     st.session_state['user_logged_in'] = False
+if 'user_id' not in st.session_state:
+    st.session_state['user_id'] = None
 if 'username' not in st.session_state:
     st.session_state['username'] = ""
 if 'admin_logged_in' not in st.session_state:
@@ -143,19 +148,21 @@ def regjistro_user(username, password, email):
 def verifiko_user(username, password):
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM perdoruesit WHERE username = ? AND password = ?", (username, password))
+    cursor.execute("SELECT id, username FROM perdoruesit WHERE username = ? AND password = ?", (username, password))
     user = cursor.fetchone()
     conn.close()
-    return user is not None
+    if user:
+        return user[0], user[1] # Kthen (user_id, username)
+    return None, None
 
-def shto_njoftim(perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_paths_str):
+def shto_njoftim(user_id, perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_paths_str):
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
     data_aktuale = datetime.now().strftime("%Y-%m-%d %H:%M")
     cursor.execute('''
-        INSERT INTO njoftime (perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data, foto_paths)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data_aktuale, foto_paths_str))
+        INSERT INTO njoftime (user_id, perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data, foto_paths)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (user_id, perdoruesi, kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, data_aktuale, foto_paths_str))
     conn.commit()
     conn.close()
 
@@ -181,10 +188,31 @@ def merr_njoftimet():
         df['cmimi'] = pd.to_numeric(df['cmimi'], errors='coerce').fillna(0.0)
     return df
 
+def merr_njoftimet_dhe_perdoruesit():
+    conn = sqlite3.connect('njoftime.db')
+    query = '''
+        SELECT 
+            n.id AS njoftim_id,
+            p.id AS perdorues_id_db,
+            p.username AS emri_perdoruesit,
+            p.email AS email_perdoruesi,
+            n.kategoria,
+            n.titulli,
+            n.cmimi,
+            n.lokacioni,
+            n.data
+        FROM njoftime n
+        LEFT JOIN perdoruesit p ON n.user_id = p.id
+        ORDER BY n.id DESC
+    '''
+    df = pd.read_sql_query(query, conn)
+    conn.close()
+    return df
+
 query_params = st.query_params
 is_admin_route = query_params.get("page") == "admin"
 
-# --- HEADER I BUKUR ---
+# --- HEADER I BUKUR DHE PROFESIONAL ---
 st.markdown("""
     <div class="site-header">
         <div>
@@ -214,11 +242,22 @@ if is_admin_route:
         if st.button("Dil nga Admini"):
             st.session_state['admin_logged_in'] = False
             st.rerun()
+            
+        st.divider()
+        st.write("### 📋 Njoftimet dhe Përdoruesit që i kanë postuar")
+        df_kombinuar = merr_njoftimet_dhe_perdoruesit()
+        if not df_kombinuar.empty:
+            st.dataframe(df_kombinuar, use_container_width=True)
+        else:
+            st.info("Nuk ka ende njoftime ose përdorues të regjistruar në databazë.")
+            
+        st.divider()
+        st.subheader("Fshij Njoftimet Sipas ID-së")
         df_all = merr_njoftimet()
-        st.dataframe(df_all)
         for idx, row in df_all.iterrows():
-            if st.button(f"Fshi njoftimin #{row['id']}", key=f"del_{row['id']}"):
+            if st.button(f"Fshi njoftimin #{row['id']} - {row['titulli']}", key=f"del_{row['id']}"):
                 fshi_njoftimin(row['id'], row['foto_paths'])
+                st.success(f"Njoftimi #{row['id']} u fshi me sukses!")
                 st.rerun()
 else:
     # --- MENAXHIMI I LLOGARISË ---
@@ -232,6 +271,7 @@ else:
         if st.session_state['user_logged_in']:
             if st.button("Dil nga Llogaria (Logout)"):
                 st.session_state['user_logged_in'] = False
+                st.session_state['user_id'] = None
                 st.session_state['username'] = ""
                 st.rerun()
 
@@ -243,9 +283,11 @@ else:
                     u = st.text_input("Username")
                     p = st.text_input("Password", type="password")
                     if st.form_submit_button("Hyr në llogari"):
-                        if verifiko_user(u, p):
+                        u_id, u_name = verifiko_user(u, p)
+                        if u_id is not None:
                             st.session_state['user_logged_in'] = True
-                            st.session_state['username'] = u
+                            st.session_state['user_id'] = u_id
+                            st.session_state['username'] = u_name
                             st.rerun()
                         else:
                             st.error("Username ose fjalëkalim i gabuar!")
@@ -256,7 +298,7 @@ else:
                     rp = st.text_input("Fjalëkalim i ri", type="password")
                     if st.form_submit_button("Krijo llogari"):
                         if regjistro_user(ru, rp, re):
-                            st.success("Regjistrimi u krye! Tani mund të kyçesh.")
+                            st.success("Regjistrimi u krye me sukses! Tani mund të kyçesh tek tab-i tjetër.")
                         else:
                             st.error("Ky username ose email ekziston tashmë!")
 
@@ -267,7 +309,7 @@ else:
         df = merr_njoftimet()
         if not df.empty:
             st.sidebar.header("🔍 Filtrat e Kërkimit")
-            kat = ["Të gjitha"] + list(df['kategoria'].unique())
+            kat = ["Të gjitha"] + list(df['kategoria'].dropna().unique())
             zkat = st.sidebar.selectbox("Kategoria", kat)
             
             lok = ["Të gjitha"] + list(df['lokacioni'].dropna().unique())
@@ -443,7 +485,18 @@ else:
                                 foto_paths_list.append(f_path)
                         
                         foto_str = ",".join(foto_paths_list)
-                        shto_njoftim(st.session_state['username'], kategoria, titulli, pershkrimi, cmimi, kontakti, lokacioni, detaje_specifike, foto_str)
+                        shto_njoftim(
+                            user_id=st.session_state['user_id'],
+                            perdoruesi=st.session_state['username'],
+                            kategoria=kategoria,
+                            titulli=titulli,
+                            pershkrimi=pershkrimi,
+                            cmimi=cmimi,
+                            kontakti=kontakti,
+                            lokacioni=lokacioni,
+                            detaje_specifike=detaje_specifike,
+                            foto_paths_str=foto_str
+                        )
                         st.success("Njoftimi u publikua me sukses!")
                     else:
                         st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
@@ -455,7 +508,7 @@ st.markdown("""
             <div style="flex: 2; min-width: 250px;">
                 <div class="footer-title">Rreth Marketplace Shqipëri</div>
                 <div class="footer-text">
-                    Platforma juaj e besuar për blerjen, shitjen dhe shërbimet në Tiranë dhe mbarë vendin. Posto lehtësisht dhe lidhu drejtpërdrejt me blerësit ose shitësit.
+                    Destinacioni kryesor për njoftimet tuaja në Tiranë dhe mbarë Shqipërinë. Posto lehtësisht dhe lidhu drejtpërdrejt me blerësit ose shitësit.
                 </div>
             </div>
             <div style="flex: 1; min-width: 150px;">
