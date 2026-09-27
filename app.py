@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Skript që fshin çdo element, badge ose logo të Streamlit Cloud në kohë reale
+# Skript që fshin elementet e Streamlit Cloud
 components.html("""
     <script>
     function removeElements() {
@@ -41,7 +41,6 @@ components.html("""
 
 st.markdown("""
     <style>
-    /* Fsheh totalisht treguesin e Streamlit dhe toolbar */
     #MainMenu, header, footer, 
     [data-testid="stStatusWidget"], 
     [data-testid="stToolbar"], 
@@ -281,44 +280,55 @@ if is_admin_route:
                     st.rerun()
 
 else:
-    st.sidebar.title("Llogaria Ime")
-    if not st.session_state['user_logged_in']:
-        auth_mode = st.sidebar.radio("Zgjidhni veprimin", ["Kyçu (Login)", "Regjistrohu (Register)"])
-        
-        if auth_mode == "Kyçu (Login)":
-            with st.sidebar.form("login_form"):
-                l_user = st.text_input("Username")
-                l_pass = st.text_input("Fjalëkalimi", type="password")
-                l_submit = st.form_submit_button("Hyr")
-                if l_submit:
-                    if verifiko_user(l_user, l_pass):
-                        st.session_state['user_logged_in'] = True
-                        st.session_state['username'] = l_user
-                        st.success("U kyçët me sukses!")
-                        st.rerun()
-                    else:
-                        st.error("Username ose fjalëkalim i gabuar!")
+    # --- MENAXHIMI I LLOGARISË NË KRYE (I dukshëm në celular) ---
+    st.markdown("---")
+    col_stat1, col_stat2 = st.columns([2, 3])
+    with col_stat1:
+        if st.session_state['user_logged_in']:
+            st.success(f"Përshëndetje, **{st.session_state['username']}**! 🎉")
         else:
-            with st.sidebar.form("register_form"):
-                r_user = st.text_input("Krijo Username *")
-                r_email = st.text_input("Adresa Email *")
-                r_pass = st.text_input("Krijo Fjalëkalim *", type="password")
-                r_submit = st.form_submit_button("Regjistrohu")
-                if r_submit:
-                    if r_user and r_email and r_pass:
-                        if regjistro_user(r_user, r_pass, r_email):
-                            st.success("Regjistrimi u krye! Tani mund të kyçeni.")
-                        else:
-                            st.error("Ky username ose email ekziston tashmë!")
-                    else:
-                        st.error("Ju lutem plotësoni të gjitha fushat e detyrueshme (*): Username, Email dhe Fjalëkalimi.")
-    else:
-        st.sidebar.success(f"Përshëndetje, **{st.session_state['username']}**!")
-        if st.sidebar.button("Dil (Logout)"):
-            st.session_state['user_logged_in'] = False
-            st.session_state['username'] = ""
-            st.rerun()
+            st.info("Nuk je i kyçur. Mund të hysh ose të regjistrohesh më poshtë 👇")
+    with col_stat2:
+        if st.session_state['user_logged_in']:
+            if st.button("Dil nga Llogaria (Logout)"):
+                st.session_state['user_logged_in'] = False
+                st.session_state['username'] = ""
+                st.rerun()
 
+    if not st.session_state['user_logged_in']:
+        with st.expander("🔑 Kliko këtu për t'u Kyçur ose Regjistruar në Llogarinë Tende", expanded=True):
+            auth_tab1, auth_tab2 = st.tabs(["Kyçu (Login)", "Regjistrohu (Register)"])
+            
+            with auth_tab1:
+                with st.form("login_form_main"):
+                    l_user = st.text_input("Username")
+                    l_pass = st.text_input("Fjalëkalimi", type="password")
+                    l_submit = st.form_submit_button("Hyr në llogari")
+                    if l_submit:
+                        if verifiko_user(l_user, l_pass):
+                            st.session_state['user_logged_in'] = True
+                            st.session_state['username'] = l_user
+                            st.success("U kyçët me sukses!")
+                            st.rerun()
+                        else:
+                            st.error("Username ose fjalëkalim i gabuar!")
+                            
+            with auth_tab2:
+                with st.form("register_form_main"):
+                    r_user = st.text_input("Krijo Username *")
+                    r_email = st.text_input("Adresa Email *")
+                    r_pass = st.text_input("Krijo Fjalëkalim *", type="password")
+                    r_submit = st.form_submit_button("Krijo Llogari të Re")
+                    if r_submit:
+                        if r_user and r_email and r_pass:
+                            if regjistro_user(r_user, r_pass, r_email):
+                                st.success("Regjistrimi u krye me sukses! Tani mund të kyçesh tek skeda 'Kyçu'.")
+                            else:
+                                st.error("Ky username ose email ekziston tashmë!")
+                        else:
+                            st.error("Ju lutem plotësoni të gjitha fushat e detyrueshme (*).")
+
+    st.markdown("---")
     tab1, tab2 = st.tabs(["Shiko Njoftimet", "Posto Njoftim të Ri"])
 
     with tab1:
@@ -329,7 +339,6 @@ else:
             col_m2.metric("Qytete të Përfshira", df['lokacioni'].nunique() if 'lokacioni' in df else 0)
             st.divider()
             
-            st.sidebar.divider()
             st.sidebar.header("Filtrimi i Njoftimeve")
             kategorite = ["Të gjitha"] + list(df['kategoria'].unique())
             zgjidh_kategori = st.sidebar.selectbox("Kategoria", kategorite)
@@ -475,7 +484,7 @@ else:
     with tab2:
         st.subheader("Shto Njoftim të Ri në Platformë")
         if not st.session_state['user_logged_in']:
-            st.warning("Ju lutem kyçuni (login) nga shiriti anësor (sidebar) për të postuar një njoftim të ri!")
+            st.warning("Ju lutem kyçuni (login) tek seksioni lart në faqe për të postuar një njoftim të ri!")
         else:
             with st.form("formular_njoftimi", clear_on_submit=True):
                 kategoria = st.selectbox("Kategoria e Njoftimit", ["Automjete", "Pasuri të Paluajtshme", "Elektronikë", "Punë & Shërbime", "Shtëpi & Kopsht", "Të Tjera"])
