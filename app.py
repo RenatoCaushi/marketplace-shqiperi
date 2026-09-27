@@ -282,7 +282,7 @@ else:
     col_stat1, col_stat2 = st.columns([3, 2])
     with col_stat1:
         if st.session_state['user_logged_in']:
-            st.success(f"Mirë se vajte, **{st.session_state['username']}**! 🎉")
+            st.success(f"Mirë se vjen, **{st.session_state['username']}**! 🎉")
         else:
             st.info("Nuk je i kyçur. Hyr në llogari ose regjistrohu për të postuar njoftime.")
     with col_stat2:
