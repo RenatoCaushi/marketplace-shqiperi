@@ -16,7 +16,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Skript që fshin elementet e Streamlit Cloud
+# Skript që fshin çdo element, badge ose logo të Streamlit Cloud në kohë reale
 components.html("""
     <script>
     function removeElements() {
@@ -123,6 +123,7 @@ st.markdown("""
 def init_db():
     conn = sqlite3.connect('njoftime.db')
     cursor = conn.cursor()
+    
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,6 +139,28 @@ def init_db():
             foto_paths TEXT
         )
     ''')
+    
+    kolonat_ekzistuese = [col[1] for col in cursor.execute("PRAGMA table_info(njoftime)").fetchall()]
+    kolonat_nevojshme = {
+        "perdoruesi": "TEXT",
+        "kategoria": "TEXT",
+        "titulli": "TEXT",
+        "pershkrimi": "TEXT",
+        "cmimi": "REAL",
+        "kontakti": "TEXT",
+        "lokacioni": "TEXT",
+        "detaje_specifike": "TEXT",
+        "data": "TEXT",
+        "foto_paths": "TEXT"
+    }
+    
+    for kolona, tipi in kolonat_nevojshme.items():
+        if kolona not in kolonat_ekzistuese:
+            try:
+                cursor.execute(f"ALTER TABLE njoftime ADD COLUMN {kolona} {tipi}")
+            except:
+                pass
+
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS perdoruesit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -150,6 +173,7 @@ def init_db():
         cursor.execute("ALTER TABLE perdoruesit ADD COLUMN email TEXT")
     except:
         pass
+        
     conn.commit()
     conn.close()
 
