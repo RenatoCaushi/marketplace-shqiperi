@@ -133,6 +133,8 @@ if 'username' not in st.session_state:
     st.session_state['username'] = ""
 if 'admin_logged_in' not in st.session_state:
     st.session_state['admin_logged_in'] = False
+if 'selected_njoftim_id' not in st.session_state:
+    st.session_state['selected_njoftim_id'] = None
 
 def regjistro_user(username, password, email):
     try:
@@ -251,7 +253,6 @@ if is_admin_route:
             
         st.divider()
         
-        # 1. Shfaqja e të gjithë përdoruesve të regjistruar
         st.write("### 👤 Përdoruesit e Regjistruar në Platformë")
         df_perdoruesit = merr_perdoruesit()
         if not df_perdoruesit.empty:
@@ -261,7 +262,6 @@ if is_admin_route:
             
         st.divider()
         
-        # 2. Shfaqja e njoftimeve dhe përdoruesve me JOIN
         st.write("### 📋 Njoftimet dhe Përdoruesit që i kanë postuar")
         df_kombinuar = merr_njoftimet_dhe_perdoruesit()
         if not df_kombinuar.empty:
@@ -278,246 +278,307 @@ if is_admin_route:
                 st.success(f"Njoftimi #{row['id']} u fshi me sukses!")
                 st.rerun()
 else:
-    # --- MENAXHIMI I LLOGARISË ---
-    col_stat1, col_stat2 = st.columns([3, 2])
-    with col_stat1:
-        if st.session_state['user_logged_in']:
-            st.success(f"Mirë se vjen, **{st.session_state['username']}**! 🎉")
-        else:
-            st.info("Nuk je i kyçur. Hyr në llogari ose regjistrohu për të postuar njoftime.")
-    with col_stat2:
-        if st.session_state['user_logged_in']:
-            if st.button("Dil nga Llogaria (Logout)"):
-                st.session_state['user_logged_in'] = False
-                st.session_state['user_id'] = None
-                st.session_state['username'] = ""
+    # Kontrollo nëse jemi tek pamja e detajeve të një njoftimi specifik
+    selected_id = st.session_state.get('selected_njoftim_id')
+    
+    if selected_id is not None:
+        df_all = merr_njoftimet()
+        nj_match = df_all[df_all['id'] == selected_id]
+        
+        if not nj_match.empty:
+            row_det = nj_match.iloc[0]
+            if st.button("⬅️ Kthehu tek Lista e Njoftimeve"):
+                st.session_state['selected_njoftim_id'] = None
                 st.rerun()
-
-    if not st.session_state['user_logged_in']:
-        with st.expander("🔑 Kliko këtu për të hyrë ose krijuar llogari", expanded=False):
-            t1, t2 = st.tabs(["Kyçu (Login)", "Regjistrohu (Register)"])
-            with t1:
-                with st.form("l_form"):
-                    u = st.text_input("Username")
-                    p = st.text_input("Password", type="password")
-                    if st.form_submit_button("Hyr në llogari"):
-                        u_id, u_name = verifiko_user(u, p)
-                        if u_id is not None:
-                            st.session_state['user_logged_in'] = True
-                            st.session_state['user_id'] = u_id
-                            st.session_state['username'] = u_name
-                            st.rerun()
-                        else:
-                            st.error("Username ose fjalëkalim i gabuar!")
-            with t2:
-                with st.form("r_form"):
-                    ru = st.text_input("Username i ri")
-                    re = st.text_input("Email")
-                    rp = st.text_input("Fjalëkalim i ri", type="password")
-                    if st.form_submit_button("Krijo llogari"):
-                        if regjistro_user(ru, rp, re):
-                            st.success("Regjistrimi u krye me sukses! Tani mund të kyçesh tek tab-i tjetër.")
-                        else:
-                            st.error("Ky username ose email ekziston tashmë!")
-
-    st.divider()
-    tab1, tab2 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri"])
-
-    with tab1:
-        df = merr_njoftimet()
-        if not df.empty:
-            st.sidebar.header("🔍 Filtrat e Kërkimit")
-            kat = ["Të gjitha"] + list(df['kategoria'].dropna().unique())
-            zkat = st.sidebar.selectbox("Kategoria", kat)
-            
-            lok = ["Të gjitha"] + list(df['lokacioni'].dropna().unique())
-            zlok = st.sidebar.selectbox("Qyteti", lok)
-            
-            max_c_db = float(df['cmimi'].max()) if not df['cmimi'].dropna().empty else 10000.0
-            min_val, max_val = st.sidebar.slider("Filtro sipas Çmimit (€)", 0.0, max(max_c_db, 1000.0), (0.0, max(max_c_db, 1000.0)))
-            
-            fjalet = st.sidebar.text_input("Kërko fjalë kyçe")
-            
-            f_df = df.copy()
-            if zkat != "Të gjitha":
-                f_df = f_df[f_df['kategoria'] == zkat]
-            if zlok != "Të gjitha":
-                f_df = f_df[f_df['lokacioni'] == zlok]
                 
-            f_df = f_df[(f_df['cmimi'] >= min_val) & (f_df['cmimi'] <= max_val)]
+            st.divider()
+            st.title(row_det['titulli'])
             
-            if fjalet:
-                f_df = f_df[
-                    f_df['titulli'].str.contains(fjalet, case=False, na=False) |
-                    f_df['pershkrimi'].str.contains(fjalet, case=False, na=False)
-                ]
-                
-            st.write(f"**Gjithsej njoftime të gjetura:** {len(f_df)}")
+            cat_det = row_det['kategoria']
+            badge_cls = "badge-tjetër"
+            if cat_det == "Automjete": badge_cls = "badge-automjete"
+            elif cat_det == "Pasuri të Paluajtshme": badge_cls = "badge-pasuri"
+            elif cat_det == "Elektronikë": badge_cls = "badge-elektronikë"
+            st.markdown(f'<span class="{badge_cls}">{cat_det}</span>', unsafe_allow_html=True)
+            
+            # Shfaq të gjitha fotot në detaje
+            foto_paths_det = row_det['foto_paths'].split(",") if row_det['foto_paths'] else []
+            valid_fotos_det = [p for p in foto_paths_det if p and os.path.exists(p)]
+            if valid_fotos_det:
+                st.write("### Fotografitë:")
+                for fp in valid_fotos_det:
+                    try:
+                        st.image(Image.open(fp), use_container_width=True)
+                    except:
+                        pass
+            
             st.write("")
-            
-            njoftime_list = f_df.to_dict('records')
-            for i in range(0, len(njoftime_list), 2):
-                col1, col2 = st.columns(2)
+            if row_det['cmimi'] > 0:
+                st.success(f"### Çmimi: {row_det['cmimi']} €")
+            else:
+                st.info("### Çmimi: Me Marrëveshje")
                 
-                with col1:
-                    row = njoftime_list[i]
-                    st.markdown('<div class="card-box">', unsafe_allow_html=True)
+            st.write("### Përshkrimi i plotë:")
+            st.write(row_det['pershkrimi'])
+            
+            if row_det['detaje_specifike']:
+                st.info(f"**Specifikat:** {row_det['detaje_specifike']}")
+                
+            st.write("---")
+            st.write(f"📍 **Lokacioni:** {row_det['lokacioni']}")
+            st.write(f"📞 **Kontakti / Telefoni:** {row_det['kontakti']}")
+            st.write(f"👤 **Postuar nga:** {row_det['perdoruesi']} | 📅 **Data:** {row_det['data']}")
+            
+            tel_det = str(row_det['kontakti']).strip()
+            if tel_det.isdigit() or tel_det.startswith("+"):
+                st.markdown(f"[📱 Shkruaj në WhatsApp](https://wa.me/{tel_det.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row_det['titulli']})", unsafe_allow_html=True)
+        else:
+            st.error("Njoftimi nuk u gjet!")
+            if st.button("Kthehu"):
+                st.session_state['selected_njoftim_id'] = None
+                st.rerun()
+    else:
+        # --- MENAXHIMI I LLOGARISË ---
+        col_stat1, col_stat2 = st.columns([3, 2])
+        with col_stat1:
+            if st.session_state['user_logged_in']:
+                st.success(f"Mirë se vjen, **{st.session_state['username']}**! 🎉")
+            else:
+                st.info("Nuk je i kyçur. Hyr në llogari ose regjistrohu për të postuar njoftime.")
+        with col_stat2:
+            if st.session_state['user_logged_in']:
+                if st.button("Dil nga Llogaria (Logout)"):
+                    st.session_state['user_logged_in'] = False
+                    st.session_state['user_id'] = None
+                    st.session_state['username'] = ""
+                    st.rerun()
+
+        if not st.session_state['user_logged_in']:
+            with st.expander("🔑 Kliko këtu për të hyrë ose krijuar llogari", expanded=False):
+                t1, t2 = st.tabs(["Kyçu (Login)", "Regjistrohu (Register)"])
+                with t1:
+                    with st.form("l_form"):
+                        u = st.text_input("Username")
+                        p = st.text_input("Password", type="password")
+                        if st.form_submit_button("Hyr në llogari"):
+                            u_id, u_name = verifiko_user(u, p)
+                            if u_id is not None:
+                                st.session_state['user_logged_in'] = True
+                                st.session_state['user_id'] = u_id
+                                st.session_state['username'] = u_name
+                                st.rerun()
+                            else:
+                                st.error("Username ose fjalëkalim i gabuar!")
+                with t2:
+                    with st.form("r_form"):
+                        ru = st.text_input("Username i ri")
+                        re = st.text_input("Email")
+                        rp = st.text_input("Fjalëkalim i ri", type="password")
+                        if st.form_submit_button("Krijo llogari"):
+                            if regjistro_user(ru, rp, re):
+                                st.success("Regjistrimi u krye me sukses! Tani mund të kyçesh tek tab-i tjetër.")
+                            else:
+                                st.error("Ky username ose email ekziston tashmë!")
+
+        st.divider()
+        tab1, tab2 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri"])
+
+        with tab1:
+            df = merr_njoftimet()
+            if not df.empty:
+                st.sidebar.header("🔍 Filtrat e Kërkimit")
+                kat = ["Të gjitha"] + list(df['kategoria'].dropna().unique())
+                zkat = st.sidebar.selectbox("Kategoria", kat)
+                
+                lok = ["Të gjitha"] + list(df['lokacioni'].dropna().unique())
+                zlok = st.sidebar.selectbox("Qyteti", lok)
+                
+                max_c_db = float(df['cmimi'].max()) if not df['cmimi'].dropna().empty else 10000.0
+                min_val, max_val = st.sidebar.slider("Filtro sipas Çmimit (€)", 0.0, max(max_c_db, 1000.0), (0.0, max(max_c_db, 1000.0)))
+                
+                fjalet = st.sidebar.text_input("Kërko fjalë kyçe")
+                
+                f_df = df.copy()
+                if zkat != "Të gjitha":
+                    f_df = f_df[f_df['kategoria'] == zkat]
+                if zlok != "Të gjitha":
+                    f_df = f_df[f_df['lokacioni'] == zlok]
                     
-                    foto_paths = row['foto_paths'].split(",") if row['foto_paths'] else []
-                    valid_fotos = [p for p in foto_paths if p and os.path.exists(p)]
-                    if valid_fotos:
-                        sel_img = st.selectbox("Foto", valid_fotos, key=f"img_{row['id']}")
-                        try:
-                            st.image(Image.open(sel_img), use_container_width=True)
-                        except:
-                            st.info("[Foto nuk u ngarkua dot]")
-                    else:
-                        st.info("🖼️ Pa foto")
-                        
-                    cat = row['kategoria']
-                    badge_cls = "badge-tjetër"
-                    if cat == "Automjete": badge_cls = "badge-automjete"
-                    elif cat == "Pasuri të Paluajtshme": badge_cls = "badge-pasuri"
-                    elif cat == "Elektronikë": badge_cls = "badge-elektronikë"
+                f_df = f_df[(f_df['cmimi'] >= min_val) & (f_df['cmimi'] <= max_val)]
+                
+                if fjalet:
+                    f_df = f_df[
+                        f_df['titulli'].str.contains(fjalet, case=False, na=False) |
+                        f_df['pershkrimi'].str.contains(fjalet, case=False, na=False)
+                    ]
                     
-                    st.markdown(f'<span class="{badge_cls}">{cat}</span>', unsafe_allow_html=True)
-                    st.markdown(f"### {row['titulli']}")
-                    st.write(row['pershkrimi'][:100] + "..." if len(row['pershkrimi']) > 100 else row['pershkrimi'])
+                st.write(f"**Gjithsej njoftime të gjetura:** {len(f_df)}")
+                st.write("")
+                
+                njoftime_list = f_df.to_dict('records')
+                for i in range(0, len(njoftime_list), 2):
+                    col1, col2 = st.columns(2)
                     
-                    if row['cmimi'] > 0:
-                        st.success(f"Çmimi: {row['cmimi']} €")
-                    else:
-                        st.info("Çmimi: Me Marrëveshje")
-                        
-                    with st.expander("📞 Shiko Kontaktin & Detajet"):
-                        st.write(f"**Përshkrimi i plotë:** {row['pershkrimi']}")
-                        if row['detaje_specifike']:
-                            st.info(f"**Specifikat:** {row['detaje_specifike']}")
-                        st.caption(f"Lokacioni: {row['lokacioni']} | Tel: {row['kontakti']} | Postuar nga: {row['perdoruesi']}")
-                        tel = str(row['kontakti']).strip()
-                        if tel.isdigit() or tel.startswith("+"):
-                            st.markdown(f"[📱 Shkruaj në WhatsApp](https://wa.me/{tel.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row['titulli']})", unsafe_allow_html=True)
-                            
-                    if st.session_state['user_logged_in'] and st.session_state['username'] == row['perdoruesi']:
-                        if st.button("Fshi Njoftimin Tim", key=f"f_{row['id']}"):
-                            fshi_njoftimin(row['id'], row['foto_paths'])
-                            st.success("U fshi!")
-                            st.rerun()
-                    st.markdown('</div>', unsafe_allow_html=True)
-                    
-                if i + 1 < len(njoftime_list):
-                    with col2:
-                        row2 = njoftime_list[i + 1]
+                    with col1:
+                        row = njoftime_list[i]
                         st.markdown('<div class="card-box">', unsafe_allow_html=True)
                         
-                        foto_paths2 = row2['foto_paths'].split(",") if row2['foto_paths'] else []
-                        valid_fotos2 = [p for p in foto_paths2 if p and os.path.exists(p)]
-                        if valid_fotos2:
-                            sel_img2 = st.selectbox("Foto", valid_fotos2, key=f"img2_{row2['id']}")
+                        # Shfaq foton e parë direkt (pa selectbox lart saj)
+                        foto_paths = row['foto_paths'].split(",") if row['foto_paths'] else []
+                        valid_fotos = [p for p in foto_paths if p and os.path.exists(p)]
+                        if valid_fotos:
                             try:
-                                st.image(Image.open(sel_img2), use_container_width=True)
+                                # Duke klikuar mbi foto, hapet detaji
+                                if st.image(Image.open(valid_fotos[0]), use_container_width=True):
+                                    pass
                             except:
                                 st.info("[Foto nuk u ngarkua dot]")
                         else:
                             st.info("🖼️ Pa foto")
                             
-                        cat2 = row2['kategoria']
-                        badge_cls2 = "badge-tjetër"
-                        if cat2 == "Automjete": badge_cls2 = "badge-automjete"
-                        elif cat2 == "Pasuri të Paluajtshme": badge_cls2 = "badge-pasuri"
-                        elif cat2 == "Elektronikë": badge_cls2 = "badge-elektronikë"
+                        cat = row['kategoria']
+                        badge_cls = "badge-tjetër"
+                        if cat == "Automjete": badge_cls = "badge-automjete"
+                        elif cat == "Pasuri të Paluajtshme": badge_cls = "badge-pasuri"
+                        elif cat == "Elektronikë": badge_cls = "badge-elektronikë"
                         
-                        st.markdown(f'<span class="{badge_cls2}">{cat2}</span>', unsafe_allow_html=True)
-                        st.markdown(f"### {row2['titulli']}")
-                        st.write(row2['pershkrimi'][:100] + "..." if len(row2['pershkrimi']) > 100 else row2['pershkrimi'])
+                        st.markdown(f'<span class="{badge_cls}">{cat}</span>', unsafe_allow_html=True)
                         
-                        if row2['cmimi'] > 0:
-                            st.success(f"Çmimi: {row2['cmimi']} €")
+                        # Titulli si buton për të hapur detajet
+                        if st.button(row['titulli'], key=f"btn_title_{row['id']}"):
+                            st.session_state['selected_njoftim_id'] = row['id']
+                            st.rerun()
+                            
+                        st.write(row['pershkrimi'][:100] + "..." if len(row['pershkrimi']) > 100 else row['pershkrimi'])
+                        
+                        if row['cmimi'] > 0:
+                            st.success(f"Çmimi: {row['cmimi']} €")
                         else:
                             st.info("Çmimi: Me Marrëveshje")
                             
-                        with st.expander("📞 Shiko Kontaktin & Detajet"):
-                            st.write(f"**Përshkrimi i plotë:** {row2['pershkrimi']}")
-                            if row2['detaje_specifike']:
-                                st.info(f"**Specifikat:** {row2['detaje_specifike']}")
-                            st.caption(f"Lokacioni: {row2['lokacioni']} | Tel: {row2['kontakti']} | Postuar nga: {row2['perdoruesi']}")
-                            tel2 = str(row2['kontakti']).strip()
-                            if tel2.isdigit() or tel2.startswith("+"):
-                                st.markdown(f"[📱 Shkruaj në WhatsApp](https://wa.me/{tel2.replace('+', '')}?text=Përshëndetje, jam i interesuar për: {row2['titulli']})", unsafe_allow_html=True)
-                                
-                        if st.session_state['user_logged_in'] and st.session_state['username'] == row2['perdoruesi']:
-                            if st.button("Fshi Njoftimin Tim", key=f"f_{row2['id']}"):
-                                fshi_njoftimin(row2['id'], row2['foto_paths'])
+                        if st.button("🔍 Shiko Detajet e Plota", key=f"det_{row['id']}"):
+                            st.session_state['selected_njoftim_id'] = row['id']
+                            st.rerun()
+                            
+                        if st.session_state['user_logged_in'] and st.session_state['username'] == row['perdoruesi']:
+                            if st.button("Fshi Njoftimin Tim", key=f"f_{row['id']}"):
+                                fshi_njoftimin(row['id'], row['foto_paths'])
                                 st.success("U fshi!")
                                 st.rerun()
                         st.markdown('</div>', unsafe_allow_html=True)
-        else:
-            st.info("Nuk ka asnjë njoftim të publikuar ende.")
-
-    with tab2:
-        st.subheader("Krijo Njoftim të Ri")
-        if not st.session_state['user_logged_in']:
-            st.warning("⚠️ Duhet të kyçesh në llogarinë tënde për të postuar një njoftim!")
-        else:
-            kategoria = st.selectbox("Zgjidh Kategorinë", ["Automjete", "Pasuri të Paluajtshme", "Elektronikë", "Të Tjera"])
-            
-            with st.form("post_form", clear_on_submit=True):
-                titulli = st.text_input("Titulli i Njoftimit (p.sh. Shitet Audi A3 / Shitet Apartament 2+1)")
-                pershkrimi = st.text_area("Përshkrimi i detajuar")
-                
-                detaje_specifike = ""
-                if kategoria == "Automjete":
-                    c1, c2, c3 = st.columns(3)
-                    viti = c1.text_input("Viti i Prodhimit")
-                    km = c2.text_input("Kilometrazhi (km)")
-                    kambio = c3.selectbox("Kambio", ["Automatike", "Manuale"])
-                    detaje_specifike = f"Viti: {viti} | KM: {km} | Kambio: {kambio}"
-                elif kategoria == "Pasuri të Paluajtshme":
-                    c1, c2 = st.columns(2)
-                    sip = c1.text_input("Sipërfaqja (m²)")
-                    dhoma = c2.text_input("Dhoma / Kati")
-                    detaje_specifike = f"Sipërfaqja: {sip} | Detaje: {dhoma}"
-                elif kategoria == "Elektronikë":
-                    gjendja = st.selectbox("Gjendja", ["E re (Kuti)", "E përdorur - Shumë e mirë", "E përdorur"])
-                    detaje_specifike = f"Gjendja: {gjendja}"
-                    
-                c_p1, c_p2 = st.columns(2)
-                with c_p1:
-                    cmimi = st.number_input("Çmimi (€) (Lëre 0 për Me Marrëveshje)", min_value=0.0, step=10.0)
-                with c_p2:
-                    lokacioni = st.selectbox("Qyteti", ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Fier", "Elbasan", "Korçë", "Tjetër"])
-                    
-                kontakti = st.text_input("Numri i Telefonit (p.sh. 069XXXXXXX)")
-                fotos = st.file_uploader("Ngarko Foton/Fotot", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
-                
-                if st.form_submit_button("Publiko Njoftimin Tani"):
-                    if titulli and pershkrimi and kontakti:
-                        foto_paths_list = []
-                        if fotos:
-                            for f in fotos:
-                                t_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                                f_name = f"{t_str}_{f.name}"
-                                f_path = os.path.join(UPLOAD_DIR, f_name)
-                                with open(f_path, "wb") as file_out:
-                                    file_out.write(f.getbuffer())
-                                foto_paths_list.append(f_path)
                         
-                        foto_str = ",".join(foto_paths_list)
-                        shto_njoftim(
-                            user_id=st.session_state['user_id'],
-                            perdoruesi=st.session_state['username'],
-                            kategoria=kategoria,
-                            titulli=titulli,
-                            pershkrimi=pershkrimi,
-                            cmimi=cmimi,
-                            kontakti=kontakti,
-                            lokacioni=lokacioni,
-                            detaje_specifike=detaje_specifike,
-                            foto_paths_str=foto_str
-                        )
-                        st.success("Njoftimi u publikua me sukses!")
-                    else:
-                        st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
+                    if i + 1 < len(njoftime_list):
+                        with col2:
+                            row2 = njoftime_list[i + 1]
+                            st.markdown('<div class="card-box">', unsafe_allow_html=True)
+                            
+                            foto_paths2 = row2['foto_paths'].split(",") if row2['foto_paths'] else []
+                            valid_fotos2 = [p for p in foto_paths2 if p and os.path.exists(p)]
+                            if valid_fotos2:
+                                try:
+                                    if st.image(Image.open(valid_fotos2[0]), use_container_width=True):
+                                        pass
+                                except:
+                                    st.info("[Foto nuk u ngarkua dot]")
+                            else:
+                                st.info("🖼️ Pa foto")
+                                
+                            cat2 = row2['kategoria']
+                            badge_cls2 = "badge-tjetër"
+                            if cat2 == "Automjete": badge_cls2 = "badge-automjete"
+                            elif cat2 == "Pasuri të Paluajtshme": badge_cls2 = "badge-pasuri"
+                            elif cat2 == "Elektronikë": badge_cls2 = "badge-elektronikë"
+                            
+                            st.markdown(f'<span class="{badge_cls2}">{cat2}</span>', unsafe_allow_html=True)
+                            
+                            if st.button(row2['titulli'], key=f"btn_title2_{row2['id']}"):
+                                st.session_state['selected_njoftim_id'] = row2['id']
+                                st.rerun()
+                                
+                            st.write(row2['pershkrimi'][:100] + "..." if len(row2['pershkrimi']) > 100 else row2['pershkrimi'])
+                            
+                            if row2['cmimi'] > 0:
+                                st.success(f"Çmimi: {row2['cmimi']} €")
+                            else:
+                                st.info("Çmimi: Me Marrëveshje")
+                                
+                            if st.button("🔍 Shiko Detajet e Plota", key=f"det2_{row2['id']}"):
+                                st.session_state['selected_njoftim_id'] = row2['id']
+                                st.rerun()
+                                
+                            if st.session_state['user_logged_in'] and st.session_state['username'] == row2['perdoruesi']:
+                                if st.button("Fshi Njoftimin Tim", key=f"f_{row2['id']}"):
+                                    fshi_njoftimin(row2['id'], row2['foto_paths'])
+                                    st.success("U fshi!")
+                                    st.rerun()
+                            st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.info("Nuk ka asnjë njoftim të publikuar ende.")
+
+        with tab2:
+            st.subheader("Krijo Njoftim të Ri")
+            if not st.session_state['user_logged_in']:
+                st.warning("⚠️ Duhet të kyçesh në llogarinë tënde për të postuar një njoftim!")
+            else:
+                kategoria = st.selectbox("Zgjidh Kategorinë", ["Automjete", "Pasuri të Paluajtshme", "Elektronikë", "Të Tjera"])
+                
+                with st.form("post_form", clear_on_submit=True):
+                    titulli = st.text_input("Titulli i Njoftimit (p.sh. Shitet Audi A3 / Shitet Apartament 2+1)")
+                    pershkrimi = st.text_area("Përshkrimi i detajuar")
+                    
+                    detaje_specifike = ""
+                    if kategoria == "Automjete":
+                        c1, c2, c3 = st.columns(3)
+                        viti = c1.text_input("Viti i Prodhimit")
+                        km = c2.text_input("Kilometrazhi (km)")
+                        kambio = c3.selectbox("Kambio", ["Automatike", "Manuale"])
+                        detaje_specifike = f"Viti: {viti} | KM: {km} | Kambio: {kambio}"
+                    elif kategoria == "Pasuri të Paluajtshme":
+                        c1, c2 = st.columns(2)
+                        sip = c1.text_input("Sipërfaqja (m²)")
+                        dhoma = c2.text_input("Dhoma / Kati")
+                        detaje_specifike = f"Sipërfaqja: {sip} | Detaje: {dhoma}"
+                    elif kategoria == "Elektronikë":
+                        gjendja = st.selectbox("Gjendja", ["E re (Kuti)", "E përdorur - Shumë e mirë", "E përdorur"])
+                        detaje_specifike = f"Gjendja: {gjendja}"
+                        
+                    c_p1, c_p2 = st.columns(2)
+                    with c_p1:
+                        cmimi = st.number_input("Çmimi (€) (Lëre 0 për Me Marrëveshje)", min_value=0.0, step=10.0)
+                    with c_p2:
+                        lokacioni = st.selectbox("Qyteti", ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Fier", "Elbasan", "Korçë", "Tjetër"])
+                        
+                    kontakti = st.text_input("Numri i Telefonit (p.sh. 069XXXXXXX)")
+                    fotos = st.file_uploader("Ngarko Foton/Fotot", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+                    
+                    if st.form_submit_button("Publiko Njoftimin Tani"):
+                        if titulli and pershkrimi and kontakti:
+                            foto_paths_list = []
+                            if fotos:
+                                for f in fotos:
+                                    t_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                                    f_name = f"{t_str}_{f.name}"
+                                    f_path = os.path.join(UPLOAD_DIR, f_name)
+                                    with open(f_path, "wb") as file_out:
+                                        file_out.write(f.getbuffer())
+                                    foto_paths_list.append(f_path)
+                            
+                            foto_str = ",".join(foto_paths_list)
+                            shto_njoftim(
+                                user_id=st.session_state['user_id'],
+                                perdoruesi=st.session_state['username'],
+                                kategoria=kategoria,
+                                titulli=titulli,
+                                pershkrimi=pershkrimi,
+                                cmimi=cmimi,
+                                kontakti=kontakti,
+                                lokacioni=lokacioni,
+                                detaje_specifike=detaje_specifike,
+                                foto_paths_str=foto_str
+                            )
+                            st.success("Njoftimi u publikua me sukses!")
+                        else:
+                            st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
 
 # --- FOOTER I BUKUR ---
 st.markdown("""
