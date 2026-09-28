@@ -55,24 +55,27 @@ zgjidh_kategorine = st.sidebar.selectbox("Filtro sipas Kategorisë", kategorite)
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📍 Harta e Shqipërisë (Qendrat)")
 
-# Të dhëna shembull për koordinatat e qyteteve për hartën me Plotly
+# Të dhëna shembull për koordinatat e qyteteve
 df_koordinata = pd.DataFrame({
     "qyteti": ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier"],
     "lat": [41.3275, 41.3246, 40.465, 42.0683, 41.1125, 40.7239],
     "lon": [19.8187, 19.4565, 19.4913, 19.5126, 20.0822, 19.5561],
 })
 
-# Shfaqja e hartës interaktive me Plotly
-fig = px.scatter_mapbox(
+# Shfaqja e hartës interaktive e sigurt për çdo version plotly
+fig = px.scatter(
     df_koordinata,
-    lat="lat",
-    lon="lon",
+    x="lon",
+    y="lat",
     text="qyteti",
-    zoom=6,
-    height=300,
+    size_max=20,
+    height=250,
 )
+fig.update_traces(textposition="top right", marker=dict(size=12, color="red"))
 fig.update_layout(
-    mapbox_style="open-street-map", margin={"r": 0, "t": 0, "l": 0, "b": 0}
+    margin=dict(l=0, r=0, t=0, b=0),
+    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
+    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
 )
 st.sidebar.plotly_chart(fig, use_container_width=True)
 
