@@ -10,15 +10,14 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Funksion i sigurt për çdo veprim në databazë (shmang çdo gabim operacional)
-def run_query(query, params=(), fetch_all=True, commit=False):
+# 1. INITIALIZIMI I DATABAZËS (Ekzekutohet gjithmonë në fillim të skedarit)
+def init_database():
     conn = sqlite3.connect("njoftime.db", check_same_thread=False)
     cursor = conn.cursor()
-    # Sigurohemi që tabela ekziston çdo herë
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulli TEXT,
+            titulli TEXT NOT NULL,
             pershkrimi TEXT,
             kategoria TEXT,
             qyteti TEXT,
@@ -26,6 +25,16 @@ def run_query(query, params=(), fetch_all=True, commit=False):
             kontakti TEXT
         )
     """)
+    conn.commit()
+    conn.close()
+
+# E thirrim menjëherë që tabela të ekzistojë 100%
+init_database()
+
+# Funksion i sigurt për queries
+def run_query(query, params=(), fetch_all=True, commit=False):
+    conn = sqlite3.connect("njoftime.db", check_same_thread=False)
+    cursor = conn.cursor()
     cursor.execute(query, params)
     if commit:
         conn.commit()
