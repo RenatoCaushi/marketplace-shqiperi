@@ -1,7 +1,6 @@
 import sqlite3
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
 # Konfigurimi i faqes
 st.set_page_config(
@@ -26,10 +25,48 @@ cursor.execute("""
 """)
 conn.commit()
 
-# --- SHIRITI ANËSOR (SIDEBAR) PËR FILTRAT DHE HARTËN ---
-st.sidebar.markdown("## 🔍 Filtrat & Harta")
+# --- HEADER (KOKA E FAQES) MODERN ---
+st.markdown(
+    """
+    <style>
+        .main-header {
+            background: linear-gradient(135deg, #1e3a8a, #2563eb);
+            padding: 30px;
+            border-radius: 12px;
+            color: white;
+            text-align: center;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .main-header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        .main-header p {
+            margin-top: 10px;
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 40px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+            font-size: 0.9rem;
+        }
+    </style>
+    <div class="main-header">
+        <h1>🛒 Marketplace Shqipëri</h1>
+        <p>Platforma kryesore e njoftimeve dhe shërbimeve në Tiranë dhe mbarë Shqipërinë</p>
+    </div>
+""",
+    unsafe_allow_html=True,
+)
 
-# Zgjedhja e qytetit
+# --- SHIRITI ANËSOR (SIDEBAR) PËR FILTRAT DHE HARTËN ---
+st.sidebar.markdown("## 🔍 Filtrimi i Njoftimeve")
+
 qytetet = [
     "Të gjitha",
     "Tiranë",
@@ -41,7 +78,6 @@ qytetet = [
 ]
 zgjidh_qytetin = st.sidebar.selectbox("Filtro sipas Qytetit", qytetet)
 
-# Zgjedhja e kategorisë
 kategorite = [
     "Të gjitha",
     "Puna / Vende Lirë",
@@ -53,50 +89,22 @@ kategorite = [
 zgjidh_kategorine = st.sidebar.selectbox("Filtro sipas Kategorisë", kategorite)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📍 Harta e Shqipërisë (Qendrat)")
+st.sidebar.markdown("### 📍 Harta e Qendrave")
 
-# Të dhëna shembull për koordinatat e qyteteve
-df_koordinata = pd.DataFrame({
-    "qyteti": ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier"],
+# Të dhënat për hartën e qyteteve (përdor latitude dhe longitude për st.map)
+df_hartë = pd.DataFrame({
     "lat": [41.3275, 41.3246, 40.465, 42.0683, 41.1125, 40.7239],
     "lon": [19.8187, 19.4565, 19.4913, 19.5126, 20.0822, 19.5561],
 })
-
-# Shfaqja e hartës interaktive e sigurt për çdo version plotly
-fig = px.scatter(
-    df_koordinata,
-    x="lon",
-    y="lat",
-    text="qyteti",
-    size_max=20,
-    height=250,
-)
-fig.update_traces(textposition="top right", marker=dict(size=12, color="red"))
-fig.update_layout(
-    margin=dict(l=0, r=0, t=0, b=0),
-    xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-)
-st.sidebar.plotly_chart(fig, use_container_width=True)
+st.sidebar.map(df_hartë, zoom=6, use_container_width=True)
 
 
-# --- FAQJA KRYESORE ---
-st.markdown(
-    """
-    <div style='background-color: #2563eb; padding: 20px; border-radius: 10px; color: white;'>
-        <h1>🛒 Marketplace Shqipëri</h1>
-        <p>Destinacioni kryesor për njoftimet tuaja në Tiranë dhe mbarë Shqipërinë</p>
-    </div>
-""",
-    unsafe_allow_html=True,
-)
-
+# --- FAQJA KRYESORE (TABS) ---
 tab1, tab2 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri"])
 
 with tab1:
     st.subheader("Njoftimet e Publikuara")
 
-    # Ndërtimi i query-t bazuar te filtrat
     query = "SELECT * FROM njoftime WHERE 1=1"
     params = []
 
@@ -128,7 +136,7 @@ with tab1:
 with tab2:
     st.subheader("Krijo Njoftim të Ri")
 
-    with st.form("formular_njoftimi"):
+    with st.form("formular_njoftimi", clear_on_submit=True):
         titulli = st.text_input("Titulli i Njoftimit")
         pershkrimi = st.text_area("Përshkrimi i Detajuar")
         kategoria = st.selectbox("Kategoria", kategorite[1:])
@@ -148,8 +156,21 @@ with tab2:
                     (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti),
                 )
                 conn.commit()
-                st.success("Njoftimi u publikua me sukses! 🎉")
+                st.success(
+                    "Njoftimi u publikua me sukses! Rifreskoni faqen për ta parë te njoftimet."
+                )
             else:
                 st.error(
                     "Ju lutemi plotësoni fushat kryesore (Titulli, Përshkrimi, Kontakti)."
                 )
+
+# --- FOOTER (FUNDI I FAQES) ---
+st.markdown(
+    """
+    <div class="footer">
+        <p>© 2026 Marketplace Shqipëri. Të gjitha të drejtat e rezervuara.</p>
+        <p>Zhvilluar me Python & Streamlit 🚀</p>
+    </div>
+""",
+    unsafe_allow_html=True,
+)
