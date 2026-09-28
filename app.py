@@ -110,7 +110,7 @@ def init_db():
             kategoria TEXT,
             titulli TEXT,
             pershkrimi TEXT,
-            cmimi REAL,
+            cmimi TEXT,
             kontakti TEXT,
             lokacioni TEXT,
             detaje_specifike TEXT,
@@ -186,8 +186,6 @@ def merr_njoftimet():
     conn = sqlite3.connect('njoftime.db')
     df = pd.read_sql_query("SELECT * FROM njoftime ORDER BY id DESC", conn)
     conn.close()
-    if not df.empty and 'cmimi' in df.columns:
-        df['cmimi'] = pd.to_numeric(df['cmimi'], errors='coerce').fillna(0.0)
     return df
 
 def merr_perdoruesit():
@@ -278,7 +276,6 @@ if is_admin_route:
                 st.success(f"Njoftimi #{row['id']} u fshi me sukses!")
                 st.rerun()
 else:
-    # Kontrollo nëse jemi tek pamja e detajeve të një njoftimi specifik
     selected_id = st.session_state.get('selected_njoftim_id')
     
     if selected_id is not None:
@@ -301,7 +298,6 @@ else:
             elif cat_det == "Elektronikë": badge_cls = "badge-elektronikë"
             st.markdown(f'<span class="{badge_cls}">{cat_det}</span>', unsafe_allow_html=True)
             
-            # Shfaq të gjitha fotot në detaje
             foto_paths_det = row_det['foto_paths'].split(",") if row_det['foto_paths'] else []
             valid_fotos_det = [p for p in foto_paths_det if p and os.path.exists(p)]
             if valid_fotos_det:
@@ -313,10 +309,7 @@ else:
                         pass
             
             st.write("")
-            if row_det['cmimi'] > 0:
-                st.success(f"### Çmimi: {row_det['cmimi']} €")
-            else:
-                st.info("### Çmimi: Me Marrëveshje")
+            st.success(f"### Çmimi: {row_det['cmimi']}")
                 
             st.write("### Përshkrimi i plotë:")
             st.write(row_det['pershkrimi'])
@@ -393,9 +386,6 @@ else:
                 lok = ["Të gjitha"] + list(df['lokacioni'].dropna().unique())
                 zlok = st.sidebar.selectbox("Qyteti", lok)
                 
-                max_c_db = float(df['cmimi'].max()) if not df['cmimi'].dropna().empty else 10000.0
-                min_val, max_val = st.sidebar.slider("Filtro sipas Çmimit (€)", 0.0, max(max_c_db, 1000.0), (0.0, max(max_c_db, 1000.0)))
-                
                 fjalet = st.sidebar.text_input("Kërko fjalë kyçe")
                 
                 f_df = df.copy()
@@ -404,8 +394,6 @@ else:
                 if zlok != "Të gjitha":
                     f_df = f_df[f_df['lokacioni'] == zlok]
                     
-                f_df = f_df[(f_df['cmimi'] >= min_val) & (f_df['cmimi'] <= max_val)]
-                
                 if fjalet:
                     f_df = f_df[
                         f_df['titulli'].str.contains(fjalet, case=False, na=False) |
@@ -423,14 +411,11 @@ else:
                         row = njoftime_list[i]
                         st.markdown('<div class="card-box">', unsafe_allow_html=True)
                         
-                        # Shfaq foton e parë direkt (pa selectbox lart saj)
                         foto_paths = row['foto_paths'].split(",") if row['foto_paths'] else []
                         valid_fotos = [p for p in foto_paths if p and os.path.exists(p)]
                         if valid_fotos:
                             try:
-                                # Duke klikuar mbi foto, hapet detaji
-                                if st.image(Image.open(valid_fotos[0]), use_container_width=True):
-                                    pass
+                                st.image(Image.open(valid_fotos[0]), use_container_width=True)
                             except:
                                 st.info("[Foto nuk u ngarkua dot]")
                         else:
@@ -444,17 +429,13 @@ else:
                         
                         st.markdown(f'<span class="{badge_cls}">{cat}</span>', unsafe_allow_html=True)
                         
-                        # Titulli si buton për të hapur detajet
                         if st.button(row['titulli'], key=f"btn_title_{row['id']}"):
                             st.session_state['selected_njoftim_id'] = row['id']
                             st.rerun()
                             
                         st.write(row['pershkrimi'][:100] + "..." if len(row['pershkrimi']) > 100 else row['pershkrimi'])
                         
-                        if row['cmimi'] > 0:
-                            st.success(f"Çmimi: {row['cmimi']} €")
-                        else:
-                            st.info("Çmimi: Me Marrëveshje")
+                        st.success(f"Çmimi: {row['cmimi']}")
                             
                         if st.button("🔍 Shiko Detajet e Plota", key=f"det_{row['id']}"):
                             st.session_state['selected_njoftim_id'] = row['id']
@@ -476,8 +457,7 @@ else:
                             valid_fotos2 = [p for p in foto_paths2 if p and os.path.exists(p)]
                             if valid_fotos2:
                                 try:
-                                    if st.image(Image.open(valid_fotos2[0]), use_container_width=True):
-                                        pass
+                                    st.image(Image.open(valid_fotos2[0]), use_container_width=True)
                                 except:
                                     st.info("[Foto nuk u ngarkua dot]")
                             else:
@@ -497,10 +477,7 @@ else:
                                 
                             st.write(row2['pershkrimi'][:100] + "..." if len(row2['pershkrimi']) > 100 else row2['pershkrimi'])
                             
-                            if row2['cmimi'] > 0:
-                                st.success(f"Çmimi: {row2['cmimi']} €")
-                            else:
-                                st.info("Çmimi: Me Marrëveshje")
+                            st.success(f"Çmimi: {row2['cmimi']}")
                                 
                             if st.button("🔍 Shiko Detajet e Plota", key=f"det2_{row2['id']}"):
                                 st.session_state['selected_njoftim_id'] = row2['id']
@@ -534,17 +511,18 @@ else:
                         kambio = c3.selectbox("Kambio", ["Automatike", "Manuale"])
                         detaje_specifike = f"Viti: {viti} | KM: {km} | Kambio: {kambio}"
                     elif kategoria == "Pasuri të Paluajtshme":
-                        c1, c2 = st.columns(2)
+                        c1, c2, c3 = st.columns(3)
                         sip = c1.text_input("Sipërfaqja (m²)")
-                        dhoma = c2.text_input("Dhoma / Kati")
-                        detaje_specifike = f"Sipërfaqja: {sip} | Detaje: {dhoma}"
+                        dhoma = c2.text_input("Numri i Dhomave")
+                        kati = c3.text_input("Kati")
+                        detaje_specifike = f"Sipërfaqja: {sip} m² | Dhoma: {dhoma} | Kati: {kati}"
                     elif kategoria == "Elektronikë":
                         gjendja = st.selectbox("Gjendja", ["E re (Kuti)", "E përdorur - Shumë e mirë", "E përdorur"])
                         detaje_specifike = f"Gjendja: {gjendja}"
                         
                     c_p1, c_p2 = st.columns(2)
                     with c_p1:
-                        cmimi = st.number_input("Çmimi (€) (Lëre 0 për Me Marrëveshje)", min_value=0.0, step=10.0)
+                        cmimi = st.text_input("Çmimi (p.sh. 50000, Me marrëveshje, etj.)")
                     with c_p2:
                         lokacioni = st.selectbox("Qyteti", ["Tiranë", "Durrës", "Vlorë", "Shkodër", "Fier", "Elbasan", "Korçë", "Tjetër"])
                         
