@@ -4,6 +4,7 @@ import sqlite3
 import os
 from datetime import datetime
 from PIL import Image
+import plotly.express as px
 
 UPLOAD_DIR = "uploaded_images"
 if not os.path.exists(UPLOAD_DIR):
@@ -135,6 +136,8 @@ if 'admin_logged_in' not in st.session_state:
     st.session_state['admin_logged_in'] = False
 if 'selected_njoftim_id' not in st.session_state:
     st.session_state['selected_njoftim_id'] = None
+if 'selected_city_map' not in st.session_state:
+    st.session_state['selected_city_map'] = "Të gjitha"
 
 def regjistro_user(username, password, email):
     try:
@@ -218,7 +221,7 @@ def merr_njoftimet_dhe_perdoruesit():
 query_params = st.query_params
 is_admin_route = query_params.get("page") == "admin"
 
-# --- HEADER I BUKUR DHE PROFESIONAL ---
+# --- HEADER ---
 st.markdown("""
     <div class="site-header">
         <div>
@@ -250,7 +253,6 @@ if is_admin_route:
             st.rerun()
             
         st.divider()
-        
         st.write("### 👤 Përdoruesit e Regjistruar në Platformë")
         df_perdoruesit = merr_perdoruesit()
         if not df_perdoruesit.empty:
@@ -259,7 +261,6 @@ if is_admin_route:
             st.info("Nuk ka ende përdorues të regjistruar.")
             
         st.divider()
-        
         st.write("### 📋 Njoftimet dhe Përdoruesit që i kanë postuar")
         df_kombinuar = merr_njoftimet_dhe_perdoruesit()
         if not df_kombinuar.empty:
@@ -380,11 +381,46 @@ else:
             df = merr_njoftimet()
             if not df.empty:
                 st.sidebar.header("🔍 Filtrat e Kërkimit")
+                
                 kat = ["Të gjitha"] + list(df['kategoria'].dropna().unique())
                 zkat = st.sidebar.selectbox("Kategoria", kat)
                 
-                lok = ["Të gjitha"] + list(df['lokacioni'].dropna().unique())
-                zlok = st.sidebar.selectbox("Qyteti", lok)
+                # --- HARTA INTERAKTIVE E QYTETEVE ---
+                st.sidebar.subheader("🗺️ Harta e Qyteteve")
+                st.sidebar.caption("Kliko qytetin më poshtë për ta filtruar:")
+                
+                # Lista e qyteteve me koordinata për hartën
+                qytetet_data = pd.DataFrame([
+                    {"Qyteti": "Tiranë", "lat": 41.3275, "lon": 19.8187},
+                    {"Qyteti": "Durrës", "lat": 41.3246, "lon": 19.4565},
+                    {"Qyteti": "Vlorë", "lat": 40.4650, "lon": 19.4915},
+                    {"Qyteti": "Shkodër", "lat": 42.0683, "lon": 19.5126},
+                    {"Qyteti": "Fier", "lat": 40.7236, "lon": 19.5561},
+                    {"Qyteti": "Elbasan", "lat": 41.1125, "lon": 20.0822},
+                    {"Qyteti": "Korçë", "lat": 40.6186, "lon": 20.7808}
+                ])
+                
+                # Krijimi i hartës me Plotly
+                fig = px.scatter_mapbox(
+                    qytetet_data,
+                    lat="lat",
+                    lon="lon",
+                    text="Qyteti",
+                    zoom=6.5,
+                    height=250
+                )
+                fig.update_traces(marker=dict(size=14, color="red"), textposition="top right")
+                fig.update_layout(
+                    mapbox_style="open-street-map",
+                    margin=dict(l=0, r=0, t=0, b=0),
+                    paper_bgcolor="rgba(0,0,0,0)"
+                )
+                
+                # Shfaqja e hartës në sidebar
+                st.sidebar.plotly_chart(fig, use_container_width=True)
+                
+                lok_opsione = ["Të gjitha"] + list(qytetet_data['Qyteti'])
+                zlok = st.sidebar.selectbox("Qyteti i zgjedhur", lok_opsione)
                 
                 fjalet = st.sidebar.text_input("Kërko fjalë kyçe")
                 
@@ -484,7 +520,7 @@ else:
                                 st.rerun()
                                 
                             if st.session_state['user_logged_in'] and st.session_state['username'] == row2['perdoruesi']:
-                                if st.button("Fshi Njoftimin Tim", key=f"f_{row2['id']}"):
+                                if st.button("Fshi Njoftimin Tim", key=f"f2_{row2['id']}"):
                                     fshi_njoftimin(row2['id'], row2['foto_paths'])
                                     st.success("U fshi!")
                                     st.rerun()
@@ -558,7 +594,7 @@ else:
                         else:
                             st.error("Ju lutem plotësoni Titullin, Përshkrimin dhe Kontaktin.")
 
-# --- FOOTER I BUKUR ---
+# --- FOOTER ---
 st.markdown("""
     <div class="site-footer">
         <div style="display: flex; justify-content: space-between; flex-wrap: wrap; gap: 30px;">
