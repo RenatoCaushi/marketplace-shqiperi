@@ -1,3 +1,4 @@
+import os
 import sqlite3
 import streamlit as st
 import pandas as pd
@@ -10,9 +11,12 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# 1. INITIALIZIMI I DATABAZËS (Ekzekutohet gjithmonë në fillim të skedarit)
+# Përcaktojmë rrugën absolute të databazës që të mos humbasë kurrë në Streamlit Cloud
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "njoftime.db")
+
+# 1. INITIALIZIMI I DATABAZËS
 def init_database():
-    conn = sqlite3.connect("njoftime.db", check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
@@ -28,12 +32,12 @@ def init_database():
     conn.commit()
     conn.close()
 
-# E thirrim menjëherë që tabela të ekzistojë 100%
+# E thirrim menjëherë
 init_database()
 
-# Funksion i sigurt për queries
+# Funksion i sigurt për queries duke përdorur DB_PATH
 def run_query(query, params=(), fetch_all=True, commit=False):
-    conn = sqlite3.connect("njoftime.db", check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute(query, params)
     if commit:
