@@ -10,25 +10,25 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Krijimi/Lidhja me bazën e të dhënave SQLite me siguri shtesë
-def get_connection():
+# Lidhja dhe Krijimi i Tabela në mënyrë të sigurt
+def get_db_connection():
     conn = sqlite3.connect("njoftime.db", check_same_thread=False)
-    return conn
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS njoftime (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulli TEXT,
+            pershkrimi TEXT,
+            kategoria TEXT,
+            qyteti TEXT,
+            cmimi REAL,
+            kontakti TEXT
+        )
+    """)
+    conn.commit()
+    return conn, cursor
 
-conn = get_connection()
-cursor = conn.cursor()
-cursor.execute("""
-    CREATE TABLE IF NOT EXISTS njoftime (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        titulli TEXT,
-        pershkrimi TEXT,
-        kategoria TEXT,
-        qyteti TEXT,
-        cmimi REAL,
-        kontakti TEXT
-    )
-""")
-conn.commit()
+conn, cursor = get_db_connection()
 
 # --- STILIZIMI I AVANCUAR CSS ---
 st.markdown("""
@@ -72,7 +72,7 @@ query_params = st.query_params
 is_admin_page = query_params.get("page") == "admin"
 
 if is_admin_page:
-    # --- PAMJA E PANELIT TË ADMINIT (Sikurse te fotoja jote) ---
+    # --- PAMJA E PANELIT TË ADMINIT ---
     st.markdown("""
         <div class="hero-section">
             <div class="hero-title">🔒 Paneli i Administrimit (Admin Login)</div>
