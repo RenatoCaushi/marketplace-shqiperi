@@ -28,16 +28,13 @@ cursor.execute("""
 """)
 conn.commit()
 
-# --- STILIZIMI I AVANCUAR CSS (UI / UX MODERN) ---
+# --- STILIZIMI I AVANCUAR CSS ---
 st.markdown(
     """
     <style>
-        /* Përmirësimi i përgjithshëm i fontit dhe sfondit */
         .stApp {
             background-color: #f8fafc;
         }
-        
-        /* Hero Section */
         .hero-section {
             background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
             padding: 40px 30px;
@@ -59,10 +56,7 @@ st.markdown(
             font-size: 1.1rem;
             margin-top: 8px;
             opacity: 0.85;
-            font-weight: 400;
         }
-
-        /* Kartat e Njoftimeve */
         .njoftim-card {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -102,8 +96,6 @@ st.markdown(
             font-size: 1.4rem;
             font-weight: 800;
         }
-
-        /* Footer Modern */
         .footer-box {
             background-color: #0f172a;
             color: #94a3b8;
@@ -114,7 +106,6 @@ st.markdown(
             justify-content: space-between;
             flex-wrap: wrap;
             gap: 30px;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
         }
         .footer-col {
             flex: 1;
@@ -146,45 +137,31 @@ st.markdown(
             <div class="hero-title">🛒 Marketplace Shqipëri</div>
             <div class="hero-subtitle">Destinacioni kryesor, më i shpejtë dhe i besueshëm për njoftimet tuaja në Shqipëri.</div>
         </div>
-        <div style="text-align: right; display: none; @media(min-width: 768px){display: block;}">
-            <span style="background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px; font-size: 0.9rem;">🇦🇱 Mbulim Kombëtar</span>
-        </div>
     </div>
 """,
     unsafe_allow_html=True,
 )
 
-# --- STATISTIKA TË SHPEJTA (METRICS) ---
+# --- STATISTIKA TË SHPEJTA ---
 cursor.execute("SELECT COUNT(*) FROM njoftime")
 total_njoftime = cursor.fetchone()[0]
 
 col_m1, col_m2, col_m3, col_m4 = st.columns(4)
 with col_m1:
-    st.metric(
-        label="📊 Njoftime Aktive",
-        value=f"{total_njoftime} Njoftime",
-        delta="Reale",
-    )
+    st.metric(label="📊 Njoftime Aktive", value=f"{total_njoftime} Njoftime")
 with col_m2:
-    st.metric(
-        label="🏙️ Qytete Kryesore", value="6 Qytete", delta="Tiranë, Durrës..."
-    )
+    st.metric(label="🏙️ Qytete Kryesore", value="6 Qytete")
 with col_m3:
-    st.metric(label="🔒 Besueshmëria", value="100%", delta="Verifikuar")
+    st.metric(label="🔒 Besueshmëria", value="100%")
 with col_m4:
-    st.metric(label="⚡ Shpejtësia", value="24/7", delta="Online")
+    st.metric(label="⚡ Shpejtësia", value="24/7")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SHIRITI ANËSOR (SIDEBAR) PËR FILTRAT DHE KËRKIMIN ---
-st.sidebar.markdown(
-    "## 🔍 Kërkimi & Filtrimi", help="Gjeni shpejt atë që kërkoni"
-)
-
-# Fushë kërkimi me tekst
+# --- SHIRITI ANËSOR (SIDEBAR) PËR FILTRAT ---
+st.sidebar.markdown("## 🔍 Kërkimi & Filtrimi")
 kerko_tekst = st.sidebar.text_input(
-    "Kërko me fjalë kyçe",
-    placeholder="P.sh. iPhone, BMW, Apartament...",
+    "Kërko me fjalë kyçe", placeholder="P.sh. iPhone, BMW..."
 )
 
 qytetet = [
@@ -210,7 +187,6 @@ zgjidh_kategorine = st.sidebar.selectbox("🏷️ Filtro sipas Kategorisë", kat
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📍 Qendrat Kryesore në Hartë")
-
 df_hartë = pd.DataFrame({
     "lat": [41.3275, 41.3246, 40.465, 42.0683, 41.1125, 40.7239],
     "lon": [19.8187, 19.4565, 19.4913, 19.5126, 20.0822, 19.5561],
@@ -218,13 +194,18 @@ df_hartë = pd.DataFrame({
 st.sidebar.map(df_hartë, zoom=5, use_container_width=True)
 
 
-# --- FAQJA KRYESORE (TABS) ---
-tab1, tab2 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri"])
+# --- TABS (Shtuar edhe Paneli i Adminit) ---
+tab1, tab2, tab3 = st.tabs(
+    [
+        "📋 Shiko Njoftimet Aktive",
+        "➕ Shto Njoftim të Ri",
+        "⚙️ Paneli i Adminit",
+    ]
+)
 
 with tab1:
     st.subheader("Njoftimet e Publikuara në Platformë")
 
-    # Ndërtimi i query-t dinamik bazuar te filtrat
     query = "SELECT * FROM njoftime WHERE 1=1"
     params = []
 
@@ -250,7 +231,6 @@ with tab1:
             unsafe_allow_html=True,
         )
         for rresht in rezultatet:
-            # Shfaqja e secilit njoftim si kartë moderne elegante
             st.markdown(
                 f"""
                 <div class="njoftim-card">
@@ -287,9 +267,7 @@ with tab2:
                 "Titulli i Njoftimit *",
                 placeholder="P.sh. Shitet Audi A3 Sedan",
             )
-            kategoria = st.selectbox(
-                "Kategoria *", kategorite[1:]
-            )  # Heqim opsionin "Të gjitha"
+            kategoria = st.selectbox("Kategoria *", kategorite[1:])
             cmimi = st.number_input(
                 "Çmimi (€) *", min_value=0.0, format="%.2f", value=0.0
             )
@@ -327,7 +305,34 @@ with tab2:
                     "⚠️ Ju lutemi plotësoni fushat e detyrueshme (Titulli, Përshkrimi, Kontakti)."
                 )
 
-# --- FOOTER PROFESIONAL ---
+with tab3:
+    st.subheader("⚙️ Paneli i Menaxhimit të Administratorit")
+    st.markdown(
+        "Këtu mund të shihni listën e plotë të njoftimeve dhe të fshini çdo njoftim që nuk është i përshtatshëm."
+    )
+
+    cursor.execute("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
+    admin_rezultate = cursor.fetchall()
+
+    if admin_rezultate:
+        for item in admin_rezultate:
+            col_a1, col_a2 = st.columns([4, 1])
+            with col_a1:
+                st.write(
+                    f"**ID: {item[0]}** | 📌 {item[1]} | 🏷️ {item[2]} | 📍 {item[3]} | 💰 {item[4]}€"
+                )
+            with col_a2:
+                if st.button("Fshi", key=f"fshi_{item[0]}"):
+                    cursor.execute(
+                        "DELETE FROM njoftime WHERE id = ?", (item[0],)
+                    )
+                    conn.commit()
+                    st.success(f"Njoftimi me ID {item[0]} u fshi!")
+                    st.rerun()
+    else:
+        st.info("Nuk ka asnjë njoftim për të menaxhuar në databazë.")
+
+# --- FOOTER ---
 st.markdown(
     """
     <div class="footer-box">
