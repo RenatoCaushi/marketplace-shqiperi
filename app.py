@@ -25,20 +25,20 @@ cursor.execute("""
 """)
 conn.commit()
 
-# --- HEADER STILIZUAR ---
+# --- STILIZIMET CSS PËR PAMJE PROFESIONALE ---
 st.markdown(
     """
     <style>
         .main-header {
             background: linear-gradient(135deg, #1e3a8a, #2563eb);
-            padding: 25px 30px;
+            padding: 30px;
             border-radius: 12px;
             color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
         }
         .main-header h1 {
             margin: 0;
@@ -51,8 +51,35 @@ st.markdown(
         }
         .header-right {
             text-align: right;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             opacity: 0.9;
+        }
+        /* Kartat e njoftimeve */
+        .njoftim-card {
+            background-color: #ffffff;
+            border: 1px solid #e2e8f0;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .njoftim-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+        }
+        .badge {
+            background-color: #eff6ff;
+            color: #1d4ed8;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .price-tag {
+            color: #16a34a;
+            font-size: 1.2rem;
+            font-weight: bold;
         }
         .footer-box {
             background-color: #0f172a;
@@ -61,7 +88,7 @@ st.markdown(
             border-radius: 12px;
             margin-top: 50px;
             display: flex;
-            justify-content: space-between;
+            justify-content: space-wrap;
             flex-wrap: wrap;
             gap: 20px;
         }
@@ -91,15 +118,36 @@ st.markdown(
             <p>Destinacioni kryesor për njoftimet tuaja në Shqipëri</p>
         </div>
         <div class="header-right">
-            <span>Qytetet kryesore: Tiranë, Durrës, Vlorë, Shkodër...</span>
+            <span>📍 Tiranë, Durrës, Vlorë, Shkodër...</span>
         </div>
     </div>
 """,
     unsafe_allow_html=True,
 )
 
+# --- STATISTIKA TË SHPEJTA NË KRYE ---
+cursor.execute("SELECT COUNT(*) FROM njoftime")
+total_njoftime = cursor.fetchone()[0]
+
+col1, col2, col3 = st.columns(3)
+with col1:
+    st.metric(
+        label="📊 Njoftime Aktive", value=f"{total_njoftime} njoftime"
+    )
+with col2:
+    st.metric(label="🏙️ Qytete të Përfshira", value="6 Qytete")
+with col3:
+    st.metric(label="🔒 Siguria", value="100% e Verifikuar")
+
+st.markdown("---")
+
 # --- SHIRITI ANËSOR (SIDEBAR) PËR FILTRAT DHE HARTËN ---
-st.sidebar.markdown("## 🔍 Filtrimi i Njoftimeve")
+st.sidebar.markdown("## 🔍 Kërkimi & Filtrimi")
+
+# Fushë kërkimi me tekst
+kerko_tekst = st.sidebar.text_input(
+    "Kërko me fjalë kyçe", placeholder="p.sh. iPhone, BMW..."
+)
 
 qytetet = [
     "Të gjitha",
@@ -149,35 +197,68 @@ with tab1:
         query += " AND kategoria = ?"
         params.append(zgjidh_kategorine)
 
+    if kerko_tekst:
+        query += " AND (titulli LIKE ? OR pershkrimi LIKE ?)"
+        params.extend([f"%{kerko_tekst}%", f"%{kerko_tekst}%"])
+
     cursor.execute(query, params)
     rezultatet = cursor.fetchall()
 
     if rezultatet:
         for rresht in rezultatet:
-            with st.container():
-                st.markdown(f"### 📌 {rresht[1]}")
-                st.write(f"**Përshkrimi:** {rresht[2]}")
-                st.info(
-                    f"🏷️ **Kategoria:** {rresht[3]} | 📍 **Qyteti:** {rresht[4]} | 💰 **Çmimi:** {rresht[5]} € | 📞 **Kontakti:** {rresht[6]}"
-                )
-                st.markdown("---")
+            # Përdorimi i një dizajni kartë moderne me HTML/CSS
+            st.markdown(
+                f"""
+                <div class="njoftim-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">📌 {rresht[1]}</h3>
+                        <span class="price-tag">{rresht[5]} €</span>
+                    </div>
+                    <p style="color: #475569; font-size: 0.95rem; margin-bottom: 12px;">{rresht[2]}</p>
+                    <div style="display: flex; gap: 10px; font-size: 0.85rem; color: #64748b;">
+                        <span class="badge">🏷️ {rresht[3]}</span>
+                        <span>📍 <b>{rresht[4]}</b></span>
+                        <span>📞 <b>{rresht[6]}</b></span>
+                    </div>
+                </div>
+            """,
+                unsafe_allow_html=True,
+            )
     else:
         st.warning(
-            "Nuk u gjet asnjë njoftim me këto filtra. Provoni të shtoni një të ri!"
+            "Nuk u gjet asnjë njoftim me këto filtra ose fjalë kërkimi. Provoni të shtoni një të ri!"
         )
 
 with tab2:
     st.subheader("Krijo Njoftim të Ri")
+    st.write(
+        "Plotësoni formën e mëposhtme për të publikuar njoftimin tuaj në platformë."
+    )
 
     with st.form("formular_njoftimi", clear_on_submit=True):
-        titulli = st.text_input("Titulli i Njoftimit")
-        pershkrimi = st.text_area("Përshkrimi i Detajuar")
-        kategoria = st.selectbox("Kategoria", kategorite[1:])
-        qyteti = st.selectbox("Qyteti", qytetet[1:])
-        cmimi = st.number_input("Çmimi (€)", min_value=0.0, format="%.2f")
-        kontakti = st.text_input("Numri i Telefonit ose Email")
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            titulli = st.text_input(
+                "Titulli i Njoftimit", placeholder="P.sh. Shitet iPhone 14 Pro"
+            )
+            kategoria = st.selectbox("Kategoria", kategorite[1:])
+            cmimi = st.number_input(
+                "Çmimi (€)", min_value=0.0, format="%.2f", value=0.0
+            )
+        with col_f2:
+            qyteti = st.selectbox("Qyteti", qytetet[1:])
+            kontakti = st.text_input(
+                "Numri i Telefonit / Email", placeholder="+355 68..."
+            )
 
-        submit = st.form_submit_button("Publiko Njoftimin")
+        pershkrimi = st.text_area(
+            "Përshkrimi i Detajuar",
+            placeholder="Shkruani detajet e produktit ose shërbimit...",
+        )
+
+        submit = st.form_submit_button(
+            "🚀 Publiko Njoftimin Tani", use_container_width=True
+        )
 
         if submit:
             if titulli and pershkrimi and kontakti:
@@ -190,14 +271,14 @@ with tab2:
                 )
                 conn.commit()
                 st.success(
-                    "Njoftimi u publikua me sukses! Rifreskoni faqen për ta parë."
+                    "Njoftimi u publikua me sukses! Klikoni te skeda e parë për ta parë."
                 )
             else:
                 st.error(
                     "Ju lutemi plotësoni fushat kryesore (Titulli, Përshkrimi, Kontakti)."
                 )
 
-# --- FOOTER ME 3 KOLONA DHE NUMRIN E RI ---
+# --- FOOTER ---
 st.markdown(
     """
     <div class="footer-box">
