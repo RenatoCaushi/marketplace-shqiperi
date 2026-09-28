@@ -25,40 +25,74 @@ cursor.execute("""
 """)
 conn.commit()
 
-# --- HEADER (KOKA E FAQES) MODERN ---
+# --- HEADER STILIZUAR ---
 st.markdown(
     """
     <style>
         .main-header {
             background: linear-gradient(135deg, #1e3a8a, #2563eb);
-            padding: 30px;
+            padding: 25px 30px;
             border-radius: 12px;
             color: white;
-            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 25px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
         .main-header h1 {
             margin: 0;
-            font-size: 2.5rem;
+            font-size: 2.2rem;
         }
         .main-header p {
-            margin-top: 10px;
-            font-size: 1.1rem;
+            margin: 5px 0 0 0;
+            font-size: 1rem;
             opacity: 0.9;
         }
-        .footer {
-            text-align: center;
-            padding: 20px;
-            margin-top: 40px;
-            color: #6b7280;
-            border-top: 1px solid #e5e7eb;
+        .header-right {
+            text-align: right;
+            font-size: 0.95rem;
+            opacity: 0.9;
+        }
+        .footer-box {
+            background-color: #0f172a;
+            color: #94a3b8;
+            padding: 40px 30px 20px 30px;
+            border-radius: 12px;
+            margin-top: 50px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .footer-col {
+            flex: 1;
+            min-width: 250px;
+        }
+        .footer-col h3 {
+            color: white;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+        .footer-col p, .footer-col ul {
             font-size: 0.9rem;
+            line-height: 1.6;
+            margin: 0;
+            list-style: none;
+            padding: 0;
+        }
+        .footer-col li {
+            margin-bottom: 8px;
         }
     </style>
     <div class="main-header">
-        <h1>🛒 Marketplace Shqipëri</h1>
-        <p>Platforma kryesore e njoftimeve dhe shërbimeve në Tiranë dhe mbarë Shqipërinë</p>
+        <div>
+            <h1>🛒 Marketplace Shqipëri</h1>
+            <p>Destinacioni kryesor për njoftimet tuaja në Shqipëri</p>
+        </div>
+        <div class="header-right">
+            <span>Qytetet kryesore: Tiranë, Durrës, Vlorë, Shkodër...</span>
+        </div>
     </div>
 """,
     unsafe_allow_html=True,
@@ -91,7 +125,6 @@ zgjidh_kategorine = st.sidebar.selectbox("Filtro sipas Kategorisë", kategorite)
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 📍 Harta e Qendrave")
 
-# Të dhënat për hartën e qyteteve (përdor latitude dhe longitude për st.map)
 df_hartë = pd.DataFrame({
     "lat": [41.3275, 41.3246, 40.465, 42.0683, 41.1125, 40.7239],
     "lon": [19.8187, 19.4565, 19.4913, 19.5126, 20.0822, 19.5561],
@@ -157,19 +190,38 @@ with tab2:
                 )
                 conn.commit()
                 st.success(
-                    "Njoftimi u publikua me sukses! Rifreskoni faqen për ta parë te njoftimet."
+                    "Njoftimi u publikua me sukses! Rifreskoni faqen për ta parë."
                 )
             else:
                 st.error(
                     "Ju lutemi plotësoni fushat kryesore (Titulli, Përshkrimi, Kontakti)."
                 )
 
-# --- FOOTER (FUNDI I FAQES) ---
+# --- FOOTER ME 3 KOLONA DHE NUMRIN E RI ---
 st.markdown(
     """
-    <div class="footer">
-        <p>© 2026 Marketplace Shqipëri. Të gjitha të drejtat e rezervuara.</p>
-        <p>Zhvilluar me Python & Streamlit 🚀</p>
+    <div class="footer-box">
+        <div class="footer-col">
+            <h3>Rreth Marketplace Shqipëri</h3>
+            <p>Platforma juaj e besuar për blerjen, shitjen dhe dhënien me qira të automjeteve, pasurive të paluajtshme, pajisjeve elektronike dhe shërbimeve në të gjithë Shqipërinë.</p>
+        </div>
+        <div class="footer-col">
+            <h3>Kategoritë</h3>
+            <ul>
+                <li>🚗 Automjete</li>
+                <li>🏠 Pasuri të Paluajtshme</li>
+                <li>💻 Elektronikë</li>
+                <li>🛠️ Punë & Shërbime</li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h3>Na Kontaktoni</h3>
+            <ul>
+                <li>📍 Tiranë, Shqipëri</li>
+                <li>✉️ info@marketplace.al</li>
+                <li>📞 +355 68 46 60 741</li>
+            </ul>
+        </div>
     </div>
 """,
     unsafe_allow_html=True,
