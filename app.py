@@ -14,11 +14,12 @@ st.set_page_config(
 # Përcaktojmë rrugën absolute të databazës
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "njoftime.db")
 
-# 1. INITIALIZIMI I SIGURT I DATABAZËS
+# 1. INITIALIZIMI DHE MIGRIMI AUTOMATIK I DATABAZËS
 def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
-    # Krijojmë tabelën me të gjitha fushat e nevojshme
+    
+    # Krijojmë tabelën nëse nuk ekziston fare
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,6 +31,26 @@ def init_database():
             kontakti TEXT
         )
     """)
+    
+    # Kontrollojmë nëse tabela ekzistuese i ka të gjitha kolonat e nevojshme (për databazat e vjetra)
+    cursor.execute("PRAGMA table_info(njoftime)")
+    existing_columns = [col[1] for col in cursor.fetchall()]
+    
+    required_columns = {
+        "pershkrimi": "TEXT",
+        "kategoria": "TEXT",
+        "qyteti": "TEXT",
+        "cmimi": "REAL",
+        "kontakti": "TEXT"
+    }
+    
+    for col_name, col_type in required_columns.items():
+        if col_name not in existing_columns:
+            try:
+                cursor.execute(f"ALTER TABLE njoftime ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass
+                
     conn.commit()
     conn.close()
 
@@ -123,7 +144,6 @@ if is_admin_page:
     st.markdown("---")
     st.subheader("Lista e Njoftimeve për Menaxhim / Fshirje")
     
-    # Sigurohemi që marrim të dhënat në mënyrë të sigurt
     admin_rezultate = run_query("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
     
     if admin_rezultate:
