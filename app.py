@@ -10,10 +10,11 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Lidhja dhe Krijimi i Tabela në mënyrë të sigurt
-def get_db_connection():
+# Funksion i sigurt për çdo veprim në databazë (shmang çdo gabim operacional)
+def run_query(query, params=(), fetch_all=True, commit=False):
     conn = sqlite3.connect("njoftime.db", check_same_thread=False)
     cursor = conn.cursor()
+    # Sigurohemi që tabela ekziston çdo herë
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -25,10 +26,12 @@ def get_db_connection():
             kontakti TEXT
         )
     """)
-    conn.commit()
-    return conn, cursor
-
-conn, cursor = get_db_connection()
+    cursor.execute(query, params)
+    if commit:
+        conn.commit()
+    result = cursor.fetchall() if fetch_all else cursor.fetchone()
+    conn.close()
+    return result
 
 # --- STILIZIMI I AVANCUAR CSS ---
 st.markdown("""
@@ -89,8 +92,8 @@ if is_admin_page:
     st.markdown("<br>", unsafe_allow_html=True)
     st.subheader("📊 Menaxhimi i Përgjithshëm i Platformës")
     
-    cursor.execute("SELECT COUNT(*) FROM njoftime")
-    total_njoftime = cursor.fetchone()[0]
+    total_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
+    total_njoftime = total_res[0] if total_res else 0
     
     col_stat1, col_stat2 = st.columns(2)
     with col_stat1:
@@ -101,8 +104,7 @@ if is_admin_page:
     st.markdown("---")
     st.subheader("Lista e Njoftimeve për Menaxhim / Fshirje")
     
-    cursor.execute("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
-    admin_rezultate = cursor.fetchall()
+    admin_rezultate = run_query("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
     
     if admin_rezultate:
         for item in admin_rezultate:
@@ -111,8 +113,7 @@ if is_admin_page:
                 st.write(f"**ID: {item[0]}** | 📌 {item[1]} | 🏷️ {item[2]} | 📍 {item[3]} | 💰 {item[4]}€")
             with col_a2:
                 if st.button("Fshi", key=f"fshi_{item[0]}"):
-                    cursor.execute("DELETE FROM njoftime WHERE id = ?", (item[0],))
-                    conn.commit()
+                    run_query("DELETE FROM njoftime WHERE id = ?", (item[0],), fetch_all=False, commit=True)
                     st.success(f"Njoftimi me ID {item[0]} u fshi!")
                     st.rerun()
     else:
@@ -128,8 +129,8 @@ else:
     """, unsafe_allow_html=True)
 
     # Statistika të shpejta
-    cursor.execute("SELECT COUNT(*) FROM njoftime")
-    total_njoftime = cursor.fetchone()[0]
+    total_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
+    total_njoftime = total_res[0] if total_res else 0
 
     col_m1, col_m2, col_m3, col_m4 = st.columns(4)
     with col_m1: st.metric(label="📊 Njoftime Aktive", value=f"{total_njoftime} Njoftime")
@@ -179,8 +180,7 @@ else:
             params.extend([f"%{kerko_tekst}%", f"%{kerko_tekst}%"])
             
         query += " ORDER BY id DESC"
-        cursor.execute(query, params)
-        rezultatet = cursor.fetchall()
+        rezultatet = run_query(query, params)
         
         if rezultatet:
             for rresht in rezultatet:
@@ -219,11 +219,10 @@ else:
             
             if submit:
                 if titulli and pershkrimi and kontakti:
-                    cursor.execute("""
+                    run_query("""
                         INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti))
-                    conn.commit()
+                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti), fetch_all=False, commit=True)
                     st.success("🎉 Njoftimi u publikua me sukses!")
                     st.rerun()
                 else:
