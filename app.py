@@ -11,13 +11,14 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Përcaktojmë rrugën absolute të databazës që të mos humbasë kurrë në Streamlit Cloud
+# Përcaktojmë rrugën absolute të databazës
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "njoftime.db")
 
-# 1. INITIALIZIMI I DATABAZËS
+# 1. INITIALIZIMI I SIGURT I DATABAZËS
 def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
+    # Krijojmë tabelën me të gjitha fushat e nevojshme
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,18 +33,23 @@ def init_database():
     conn.commit()
     conn.close()
 
-# E thirrim menjëherë
+# E thirrim menjëherë në fillim
 init_database()
 
-# Funksion i sigurt për queries duke përdorur DB_PATH
+# Funksion i sigurt për queries
 def run_query(query, params=(), fetch_all=True, commit=False):
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
-    cursor.execute(query, params)
-    if commit:
-        conn.commit()
-    result = cursor.fetchall() if fetch_all else cursor.fetchone()
-    conn.close()
+    try:
+        cursor.execute(query, params)
+        if commit:
+            conn.commit()
+        result = cursor.fetchall() if fetch_all else cursor.fetchone()
+    except Exception as e:
+        result = None
+        st.error(f"Gabim në databazë: {e}")
+    finally:
+        conn.close()
     return result
 
 # --- STILIZIMI I AVANCUAR CSS ---
@@ -117,6 +123,7 @@ if is_admin_page:
     st.markdown("---")
     st.subheader("Lista e Njoftimeve për Menaxhim / Fshirje")
     
+    # Sigurohemi që marrim të dhënat në mënyrë të sigurt
     admin_rezultate = run_query("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
     
     if admin_rezultate:
@@ -130,7 +137,7 @@ if is_admin_page:
                     st.success(f"Njoftimi me ID {item[0]} u fshi!")
                     st.rerun()
     else:
-        st.info("Nuk ka asnjë njoftim për të menaxhuar në databazë.")
+        st.info("Nuk ka asnjë njoftim për të menaxhuar në databazë ose tabela është bosh.")
 
 else:
     # --- FAQJA KRYESORE NORMALE ---
