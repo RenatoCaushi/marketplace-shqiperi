@@ -4,7 +4,10 @@ import pandas as pd
 
 # Konfigurimi i faqes
 st.set_page_config(
-    page_title="Marketplace Shqipëri", page_icon="🛒", layout="wide"
+    page_title="Marketplace Shqipëri",
+    page_icon="🛒",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 # Krijimi/Lidhja me bazën e të dhënave SQLite
@@ -25,128 +28,163 @@ cursor.execute("""
 """)
 conn.commit()
 
-# --- STILIZIMET CSS PËR PAMJE PROFESIONALE ---
+# --- STILIZIMI I AVANCUAR CSS (UI / UX MODERN) ---
 st.markdown(
     """
     <style>
-        .main-header {
-            background: linear-gradient(135deg, #1e3a8a, #2563eb);
-            padding: 30px;
-            border-radius: 12px;
+        /* Përmirësimi i përgjithshëm i fontit dhe sfondit */
+        .stApp {
+            background-color: #f8fafc;
+        }
+        
+        /* Hero Section */
+        .hero-section {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            padding: 40px 30px;
+            border-radius: 16px;
             color: white;
+            box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.3);
+            margin-bottom: 30px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.2);
         }
-        .main-header h1 {
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 800;
             margin: 0;
-            font-size: 2.2rem;
+            letter-spacing: -0.5px;
         }
-        .main-header p {
-            margin: 5px 0 0 0;
-            font-size: 1rem;
-            opacity: 0.9;
+        .hero-subtitle {
+            font-size: 1.1rem;
+            margin-top: 8px;
+            opacity: 0.85;
+            font-weight: 400;
         }
-        .header-right {
-            text-align: right;
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-        /* Kartat e njoftimeve */
+
+        /* Kartat e Njoftimeve */
         .njoftim-card {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            padding: 24px;
+            border-radius: 14px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
         }
         .njoftim-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.05);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px -3px rgba(0, 0, 0, 0.08);
+            border-color: #cbd5e1;
         }
-        .badge {
+        .card-title {
+            color: #0f172a;
+            font-size: 1.35rem;
+            font-weight: 700;
+            margin: 0 0 10px 0;
+        }
+        .card-desc {
+            color: #475569;
+            font-size: 0.98rem;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        .badge-kategoria {
             background-color: #eff6ff;
-            color: #1d4ed8;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            color: #2563eb;
+            padding: 6px 14px;
+            border-radius: 30px;
+            font-size: 0.82rem;
             font-weight: 600;
         }
-        .price-tag {
+        .price-display {
             color: #16a34a;
-            font-size: 1.2rem;
-            font-weight: bold;
+            font-size: 1.4rem;
+            font-weight: 800;
         }
+
+        /* Footer Modern */
         .footer-box {
             background-color: #0f172a;
             color: #94a3b8;
-            padding: 40px 30px 20px 30px;
-            border-radius: 12px;
-            margin-top: 50px;
+            padding: 50px 40px 30px 40px;
+            border-radius: 16px;
+            margin-top: 60px;
             display: flex;
-            justify-content: space-wrap;
+            justify-content: space-between;
             flex-wrap: wrap;
-            gap: 20px;
+            gap: 30px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.05);
         }
         .footer-col {
             flex: 1;
-            min-width: 250px;
+            min-width: 260px;
         }
         .footer-col h3 {
             color: white;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin-bottom: 18px;
+            border-bottom: 2px solid #2563eb;
+            display: inline-block;
+            padding-bottom: 4px;
         }
         .footer-col p, .footer-col ul {
-            font-size: 0.9rem;
-            line-height: 1.6;
+            font-size: 0.92rem;
+            line-height: 1.7;
             margin: 0;
             list-style: none;
             padding: 0;
         }
         .footer-col li {
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
     </style>
-    <div class="main-header">
+    
+    <div class="hero-section">
         <div>
-            <h1>🛒 Marketplace Shqipëri</h1>
-            <p>Destinacioni kryesor për njoftimet tuaja në Shqipëri</p>
+            <div class="hero-title">🛒 Marketplace Shqipëri</div>
+            <div class="hero-subtitle">Destinacioni kryesor, më i shpejtë dhe i besueshëm për njoftimet tuaja në Shqipëri.</div>
         </div>
-        <div class="header-right">
-            <span>📍 Tiranë, Durrës, Vlorë, Shkodër...</span>
+        <div style="text-align: right; display: none; @media(min-width: 768px){display: block;}">
+            <span style="background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px; font-size: 0.9rem;">🇦🇱 Mbulim Kombëtar</span>
         </div>
     </div>
 """,
     unsafe_allow_html=True,
 )
 
-# --- STATISTIKA TË SHPEJTA NË KRYE ---
+# --- STATISTIKA TË SHPEJTA (METRICS) ---
 cursor.execute("SELECT COUNT(*) FROM njoftime")
 total_njoftime = cursor.fetchone()[0]
 
-col1, col2, col3 = st.columns(3)
-with col1:
+col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+with col_m1:
     st.metric(
-        label="📊 Njoftime Aktive", value=f"{total_njoftime} njoftime"
+        label="📊 Njoftime Aktive",
+        value=f"{total_njoftime} Njoftime",
+        delta="Reale",
     )
-with col2:
-    st.metric(label="🏙️ Qytete të Përfshira", value="6 Qytete")
-with col3:
-    st.metric(label="🔒 Siguria", value="100% e Verifikuar")
+with col_m2:
+    st.metric(
+        label="🏙️ Qytete Kryesore", value="6 Qytete", delta="Tiranë, Durrës..."
+    )
+with col_m3:
+    st.metric(label="🔒 Besueshmëria", value="100%", delta="Verifikuar")
+with col_m4:
+    st.metric(label="⚡ Shpejtësia", value="24/7", delta="Online")
 
-st.markdown("---")
+st.markdown("<br>", unsafe_allow_html=True)
 
-# --- SHIRITI ANËSOR (SIDEBAR) PËR FILTRAT DHE HARTËN ---
-st.sidebar.markdown("## 🔍 Kërkimi & Filtrimi")
+# --- SHIRITI ANËSOR (SIDEBAR) PËR FILTRAT DHE KËRKIMIN ---
+st.sidebar.markdown(
+    "## 🔍 Kërkimi & Filtrimi", help="Gjeni shpejt atë që kërkoni"
+)
 
 # Fushë kërkimi me tekst
 kerko_tekst = st.sidebar.text_input(
-    "Kërko me fjalë kyçe", placeholder="p.sh. iPhone, BMW..."
+    "Kërko me fjalë kyçe",
+    placeholder="P.sh. iPhone, BMW, Apartament...",
 )
 
 qytetet = [
@@ -158,7 +196,7 @@ qytetet = [
     "Elbasan",
     "Fier",
 ]
-zgjidh_qytetin = st.sidebar.selectbox("Filtro sipas Qytetit", qytetet)
+zgjidh_qytetin = st.sidebar.selectbox("📍 Filtro sipas Qytetit", qytetet)
 
 kategorite = [
     "Të gjitha",
@@ -168,24 +206,25 @@ kategorite = [
     "Elektronikë",
     "Të Tjera",
 ]
-zgjidh_kategorine = st.sidebar.selectbox("Filtro sipas Kategorisë", kategorite)
+zgjidh_kategorine = st.sidebar.selectbox("🏷️ Filtro sipas Kategorisë", kategorite)
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 📍 Harta e Qendrave")
+st.sidebar.markdown("### 📍 Qendrat Kryesore në Hartë")
 
 df_hartë = pd.DataFrame({
     "lat": [41.3275, 41.3246, 40.465, 42.0683, 41.1125, 40.7239],
     "lon": [19.8187, 19.4565, 19.4913, 19.5126, 20.0822, 19.5561],
 })
-st.sidebar.map(df_hartë, zoom=6, use_container_width=True)
+st.sidebar.map(df_hartë, zoom=5, use_container_width=True)
 
 
 # --- FAQJA KRYESORE (TABS) ---
 tab1, tab2 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri"])
 
 with tab1:
-    st.subheader("Njoftimet e Publikuara")
+    st.subheader("Njoftimet e Publikuara në Platformë")
 
+    # Ndërtimi i query-t dinamik bazuar te filtrat
     query = "SELECT * FROM njoftime WHERE 1=1"
     params = []
 
@@ -201,61 +240,71 @@ with tab1:
         query += " AND (titulli LIKE ? OR pershkrimi LIKE ?)"
         params.extend([f"%{kerko_tekst}%", f"%{kerko_tekst}%"])
 
+    query += " ORDER BY id DESC"
     cursor.execute(query, params)
     rezultatet = cursor.fetchall()
 
     if rezultatet:
+        st.markdown(
+            f"<p style='color: #64748b; font-size: 0.9rem;'>U gjetën <b>{len(rezultatet)}</b> njoftime aktive.</p>",
+            unsafe_allow_html=True,
+        )
         for rresht in rezultatet:
-            # Përdorimi i një dizajni kartë moderne me HTML/CSS
+            # Shfaqja e secilit njoftim si kartë moderne elegante
             st.markdown(
                 f"""
                 <div class="njoftim-card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">📌 {rresht[1]}</h3>
-                        <span class="price-tag">{rresht[5]} €</span>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <h3 class="card-title">📌 {rresht[1]}</h3>
+                        <span class="price-display">{rresht[5]:,.0f} €</span>
                     </div>
-                    <p style="color: #475569; font-size: 0.95rem; margin-bottom: 12px;">{rresht[2]}</p>
-                    <div style="display: flex; gap: 10px; font-size: 0.85rem; color: #64748b;">
-                        <span class="badge">🏷️ {rresht[3]}</span>
+                    <p class="card-desc">{rresht[2]}</p>
+                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; color: #475569; border-top: 1px solid #f1f5f9; padding-top: 12px;">
+                        <span class="badge-kategoria">🏷️ {rresht[3]}</span>
                         <span>📍 <b>{rresht[4]}</b></span>
-                        <span>📞 <b>{rresht[6]}</b></span>
+                        <span style="margin-left: auto;">📞 Kontakti: <b style="color: #1e3a8a;">{rresht[6]}</b></span>
                     </div>
                 </div>
             """,
                 unsafe_allow_html=True,
             )
     else:
-        st.warning(
-            "Nuk u gjet asnjë njoftim me këto filtra ose fjalë kërkimi. Provoni të shtoni një të ri!"
+        st.info(
+            "📭 Nuk u gjet asnjë njoftim që përkon me kriteret tuaja. Mund të kaloni te skeda tjetër për të shtuar njoftimin tuaj të parë!"
         )
 
 with tab2:
     st.subheader("Krijo Njoftim të Ri")
-    st.write(
-        "Plotësoni formën e mëposhtme për të publikuar njoftimin tuaj në platformë."
+    st.markdown(
+        "<p style='color: #475569;'>Plotësoni të dhënat e mëposhtme për të shfaqur njoftimin tuaj menjëherë në faqe.</p>",
+        unsafe_allow_html=True,
     )
 
     with st.form("formular_njoftimi", clear_on_submit=True):
         col_f1, col_f2 = st.columns(2)
         with col_f1:
             titulli = st.text_input(
-                "Titulli i Njoftimit", placeholder="P.sh. Shitet iPhone 14 Pro"
+                "Titulli i Njoftimit *",
+                placeholder="P.sh. Shitet Audi A3 Sedan",
             )
-            kategoria = st.selectbox("Kategoria", kategorite[1:])
+            kategoria = st.selectbox(
+                "Kategoria *", kategorite[1:]
+            )  # Heqim opsionin "Të gjitha"
             cmimi = st.number_input(
-                "Çmimi (€)", min_value=0.0, format="%.2f", value=0.0
+                "Çmimi (€) *", min_value=0.0, format="%.2f", value=0.0
             )
         with col_f2:
-            qyteti = st.selectbox("Qyteti", qytetet[1:])
+            qyteti = st.selectbox("Qyteti *", qytetet[1:])
             kontakti = st.text_input(
-                "Numri i Telefonit / Email", placeholder="+355 68..."
+                "Numri i Telefonit / Email *", placeholder="+355 68..."
             )
 
         pershkrimi = st.text_area(
-            "Përshkrimi i Detajuar",
-            placeholder="Shkruani detajet e produktit ose shërbimit...",
+            "Përshkrimi i Detajuar *",
+            placeholder="Shkruani detajet kryesore të produktit, gjendjen, kushtet...",
         )
 
+        st.markdown("<br>", unsafe_allow_html=True)
         submit = st.form_submit_button(
             "🚀 Publiko Njoftimin Tani", use_container_width=True
         )
@@ -271,28 +320,28 @@ with tab2:
                 )
                 conn.commit()
                 st.success(
-                    "Njoftimi u publikua me sukses! Klikoni te skeda e parë për ta parë."
+                    "🎉 Njoftimi u publikua me sukses! Klikoni te skeda e parë për ta parë."
                 )
             else:
                 st.error(
-                    "Ju lutemi plotësoni fushat kryesore (Titulli, Përshkrimi, Kontakti)."
+                    "⚠️ Ju lutemi plotësoni fushat e detyrueshme (Titulli, Përshkrimi, Kontakti)."
                 )
 
-# --- FOOTER ---
+# --- FOOTER PROFESIONAL ---
 st.markdown(
     """
     <div class="footer-box">
         <div class="footer-col">
             <h3>Rreth Marketplace Shqipëri</h3>
-            <p>Platforma juaj e besuar për blerjen, shitjen dhe dhënien me qira të automjeteve, pasurive të paluajtshme, pajisjeve elektronike dhe shërbimeve në të gjithë Shqipërinë.</p>
+            <p>Platforma juaj e besuar për blerjen, shitjen dhe dhënien me qira të automjeteve, pasurive të paluajtshme, pajisjeve elektronike dhe shërbimeve në të gjithë territorin e Shqipërisë.</p>
         </div>
         <div class="footer-col">
-            <h3>Kategoritë</h3>
+            <h3>Kategoritë Kryesore</h3>
             <ul>
-                <li>🚗 Automjete</li>
+                <li>🚗 Automjete & Pjesë Këmbimi</li>
                 <li>🏠 Pasuri të Paluajtshme</li>
-                <li>💻 Elektronikë</li>
-                <li>🛠️ Punë & Shërbime</li>
+                <li>💻 Elektronikë & Teknologji</li>
+                <li>🛠️ Punë & Shërbime Profesionale</li>
             </ul>
         </div>
         <div class="footer-col">
