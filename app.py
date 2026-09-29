@@ -207,16 +207,38 @@ if is_admin_page:
         c2.metric("Njoftime", n_count)
         
         st.markdown("---")
-        st.subheader("📋 Të gjitha Njoftimet")
-        njoftimet_all = run_query("SELECT id, titulli, qyteti, cmimi FROM njoftime")
-        if njoftimet_all:
-            for nj in njoftimet_all:
-                col_a, col_b = st.columns([4, 1])
-                col_a.write(f"**ID: {nj[0]}** | {nj[1]} | 📍 {nj[2]} | 💰 {nj[3]}")
-                if col_b.button("Fshi", key=f"fshi_admin_{nj[0]}"):
-                    run_query("DELETE FROM njoftime WHERE id = %s", (nj[0],), commit=True)
-                    st.success("Njoftimi u fshi!")
-                    st.rerun()
+        
+        # Skedat për menaxhimin e plotë të njoftimeve dhe përdoruesve
+        tab_admin_njoftime, tab_admin_perdorues = st.tabs(["📋 Menaxho Njoftimet", "👥 Menaxho Përdoruesit"])
+        
+        with tab_admin_njoftime:
+            st.subheader("📋 Të gjitha Njoftimet")
+            njoftimet_all = run_query("SELECT id, titulli, qyteti, cmimi FROM njoftime")
+            if njoftimet_all:
+                for nj in njoftimet_all:
+                    col_a, col_b = st.columns([4, 1])
+                    col_a.write(f"**ID: {nj[0]}** | {nj[1]} | 📍 {nj[2]} | 💰 {nj[3]}")
+                    if col_b.button("Fshi", key=f"fshi_admin_nj_{nj[0]}"):
+                        run_query("DELETE FROM njoftime WHERE id = %s", (nj[0],), commit=True)
+                        st.success("Njoftimi u fshi!")
+                        st.rerun()
+            else:
+                st.info("Nuk ka asnjë njoftim të regjistruar.")
+
+        with tab_admin_perdorues:
+            st.subheader("👥 Të gjithë Përdoruesit e Regjistruar")
+            perdoruesit_all = run_query("SELECT id, emri, email, data_regjistrimit FROM perdoruesit ORDER BY id DESC")
+            if perdoruesit_all:
+                for p in perdoruesit_all:
+                    col_p1, col_p2 = st.columns([4, 1])
+                    col_p1.write(f"**ID: {p[0]}** | 👤 {p[1]} | ✉️ {p[2]} | 📅 {str(p[3])[:10]}")
+                    if col_p2.button("Fshi", key=f"fshi_admin_p_{p[0]}"):
+                        run_query("DELETE FROM njoftime WHERE perdorues_id = %s", (p[0],), commit=True)
+                        run_query("DELETE FROM perdoruesit WHERE id = %s", (p[0],), commit=True)
+                        st.success("Përdoruesi dhe njoftimet e tij u fshinë!")
+                        st.rerun()
+            else:
+                st.info("Nuk ka asnjë përdorues të regjistruar.")
 
 elif st.session_state.menu_page == "Auth":
     st.subheader("Autentikimi në Platformë")
