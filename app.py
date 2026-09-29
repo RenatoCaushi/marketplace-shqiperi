@@ -49,7 +49,7 @@ def init_database():
 
 init_database()
 
-# Funksion ndihmës për të ekzekutuar queries në Neon PostgreSQL
+# Funksion ndihmës për të ekzekutuar queries normale (për shkrim/fshirje)
 def run_query(query, params=(), fetch_all=True, commit=False):
     try:
         conn = get_db_connection()
@@ -72,6 +72,20 @@ def run_query(query, params=(), fetch_all=True, commit=False):
     except Exception as e:
         st.error(f"Gabim në databazë: {e}")
         return None
+
+# Funksion i optimizuar me caching për leximin e shpejtë të njoftimeve
+@st.cache_data(ttl=30)
+def run_cached_query(query, params_tuple=()):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(query, params_tuple)
+        result = cur.fetchall()
+        cur.close()
+        conn.close()
+        return result
+    except Exception as e:
+        return []
 
 # --- STILIZIMI I PROFESIONALIZUAR CSS ---
 st.markdown("""
@@ -381,7 +395,9 @@ else:
         params.extend([f"%{kerko_tekst}%", f"%{kerko_tekst}%"])
         
     query += " ORDER BY id DESC"
-    rezultatet = run_query(query, params)
+    
+    # Përdorimi i funksionit të optimizuar me cache
+    rezultatet = run_cached_query(query, tuple(params))
     
     if rezultatet:
         for rresht in rezultatet:
