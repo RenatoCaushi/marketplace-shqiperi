@@ -220,7 +220,6 @@ elif st.session_state.menu_page == "Auth":
                     st.session_state.user_id = res[0]
                     st.session_state.user_name = res[1]
                     st.session_state.user_email = res[2]
-                    # Ruajmë ID në URL query params që të mos humbasë gjatë refresh
                     st.query_params["uid"] = str(res[0])
                     st.session_state.menu_page = "Kreu"
                     st.success(f"Mirë se erdhe, {res[1]}!")
@@ -387,7 +386,7 @@ else:
             
             with col_img:
                 if len(rresht) > 7 and rresht[7] and os.path.exists(rresht[7]):
-                    st.image(rresht[7], use_column_width=True)
+                    st.image(rresht[7], use_container_width=True)
                 else:
                     st.markdown("🖼️ *Pa foto*")
                     
