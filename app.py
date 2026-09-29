@@ -2,6 +2,7 @@ import os
 import sqlite3
 import streamlit as st
 import pandas as pd
+from PIL import Image
 
 # Konfigurimi i faqes
 st.set_page_config(
@@ -385,8 +386,13 @@ else:
             col_img, col_content = st.columns([1, 3])
             
             with col_img:
-                if len(rresht) > 7 and rresht[7] and os.path.exists(rresht[7]):
-                    st.image(rresht[7])
+                foto_path = rresht[7] if len(rresht) > 7 else None
+                if foto_path and isinstance(foto_path, str) and os.path.exists(foto_path):
+                    try:
+                        img = Image.open(foto_path)
+                        st.image(img)
+                    except Exception:
+                        st.markdown("🖼️ *Gabim në ngarkimin e fotos*")
                 else:
                     st.markdown("🖼️ *Pa foto*")
                     
