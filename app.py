@@ -14,7 +14,6 @@ st.set_page_config(
 # Përcaktojmë rrugën absolute të databazës
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "marketplace.db")
 
-# 1. INITIALIZIMI I DATABAZËS DHE MIGRIMI AUTOMATIK I KOLONAVE
 def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
@@ -29,7 +28,6 @@ def init_database():
         )
     """)
     
-    # Kontroll për kolonën 'fjalekalimi'
     cursor.execute("PRAGMA table_info(perdoruesit)")
     columns_p = [col[1] for col in cursor.fetchall()]
     if "fjalekalimi" not in columns_p:
@@ -51,7 +49,6 @@ def init_database():
         )
     """)
     
-    # Kontroll për kolonat shtesë nëse tabela ekzistonte më paré
     cursor.execute("PRAGMA table_info(njoftime)")
     columns_n = [col[1] for col in cursor.fetchall()]
     if "foto" not in columns_n:
@@ -83,63 +80,23 @@ def run_query(query, params=(), fetch_all=True, commit=False):
 st.markdown("""
     <style>
         .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
-        
-        .njoftim-card {
-            background-color: #ffffff;
-            border: 1px solid #e2e8f0;
-            padding: 24px;
-            border-radius: 16px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
         .card-title { color: #0f172a; font-size: 1.3rem; font-weight: 700; margin: 0 0 8px 0; }
         .card-desc { color: #475569; font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px; }
         .spec-box { background-color: #f8fafc; border-left: 3px solid #2563eb; padding: 8px 12px; font-size: 0.85rem; color: #334155; margin-bottom: 12px; border-radius: 4px; }
         .badge-kategoria { background-color: #eff6ff; color: #2563eb; padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; }
         .badge-qyteti { background-color: #f1f5f9; color: #475569; padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; }
         .price-display { color: #16a34a; font-size: 1.35rem; font-weight: 800; }
-
-        .map-container {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            padding: 25px;
-            border-radius: 16px;
-            margin-bottom: 30px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-        }
-
-        .footer-container {
-            background-color: #0f172a;
-            color: #94a3b8;
-            padding: 50px 40px;
-            border-radius: 20px;
-            margin-top: 60px;
-            display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 30px;
-            border-top: 4px solid #2563eb;
-        }
+        .map-container { background: #ffffff; border: 1px solid #e2e8f0; padding: 25px; border-radius: 16px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
+        .footer-container { background-color: #0f172a; color: #94a3b8; padding: 50px 40px; border-radius: 20px; margin-top: 60px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 30px; border-top: 4px solid #2563eb; }
         .footer-col { flex: 1; min-width: 250px; }
         .footer-col h4 { color: white; font-size: 1.1rem; font-weight: 700; margin-bottom: 15px; }
         .footer-col p, .footer-col ul { font-size: 0.9rem; line-height: 1.7; margin: 0; color: #94a3b8; list-style: none; padding: 0; }
         .footer-col li { margin-bottom: 8px; }
-        .footer-bottom {
-            width: 100%;
-            text-align: center;
-            border-top: 1px solid #1e293b;
-            padding-top: 20px;
-            margin-top: 20px;
-            font-size: 0.85rem;
-            color: #64748b;
-        }
+        .footer-bottom { width: 100%; text-align: center; border-top: 1px solid #1e293b; padding-top: 20px; margin-top: 20px; font-size: 0.85rem; color: #64748b; }
     </style>
 """, unsafe_allow_html=True)
 
-# Menaxhimi i sesionit
+# Menaxhimi i sesionit dhe persistenca përmes URL Query Params
 query_params = st.query_params
 is_admin_page = query_params.get("page") == "admin"
 
@@ -151,6 +108,19 @@ if 'user_logged_in' not in st.session_state:
     st.session_state.user_email = None
     st.session_state.user_name = None
     st.session_state.user_id = None
+
+# Rikupero nga URL nëse ka mbetur i kyçur
+if not st.session_state.user_logged_in and "uid" in query_params:
+    try:
+        saved_uid = int(query_params["uid"])
+        res_user = run_query("SELECT id, emri, email FROM perdoruesit WHERE id = ?", (saved_uid,), fetch_all=False)
+        if res_user:
+            st.session_state.user_logged_in = True
+            st.session_state.user_id = res_user[0]
+            st.session_state.user_name = res_user[1]
+            st.session_state.user_email = res_user[2]
+    except Exception:
+        pass
 
 if 'selected_qyteti_filter' not in st.session_state:
     st.session_state.selected_qyteti_filter = "Të gjitha"
@@ -182,6 +152,8 @@ with nav_col4:
             st.session_state.user_email = None
             st.session_state.user_name = None
             st.session_state.user_id = None
+            if "uid" in query_params:
+                del query_params["uid"]
             st.success("U çkyçët me sukses!")
             st.rerun()
 
@@ -242,11 +214,14 @@ elif st.session_state.menu_page == "Auth":
             pass_l = st.text_input("Fjalëkalimi", type="password")
             submit_l = st.form_submit_button("Kyçu")
             if submit_l:
-                res = run_query("SELECT id, emri FROM perdoruesit WHERE email = ?", (email_l,), fetch_all=False)
+                res = run_query("SELECT id, emri, email FROM perdoruesit WHERE email = ?", (email_l,), fetch_all=False)
                 if res:
                     st.session_state.user_logged_in = True
                     st.session_state.user_id = res[0]
                     st.session_state.user_name = res[1]
+                    st.session_state.user_email = res[2]
+                    # Ruajmë ID në URL query params që të mos humbasë gjatë refresh
+                    st.query_params["uid"] = str(res[0])
                     st.session_state.menu_page = "Kreu"
                     st.success(f"Mirë se erdhe, {res[1]}!")
                     st.rerun()
@@ -280,7 +255,6 @@ elif st.session_state.menu_page == "Shto Njoftim":
             qyteti = st.selectbox("Qyteti *", qytetet_lista[1:])
             cmimi = st.text_input("Çmimi *", placeholder="P.sh. 120,000€, 500 Lekë/dita, Me marrëveshje")
             
-            # Fusha specifike sipas kategorisë
             specifike_rez = ""
             st.markdown("---")
             st.markdown(f"#### Detajet Specifike për: **{kategoria}**")
@@ -352,7 +326,6 @@ elif st.session_state.menu_page == "Shto Njoftim":
 
 else:
     # --- FAQJA KRYESORE (KREU) ---
-    
     st.markdown("""
         <div class="map-container">
             <h3 style="margin-top:0; color: #0f172a;">🗺️ Harta Interaktive e Qyteteve në Shqipëri</h3>
@@ -410,7 +383,6 @@ else:
     
     if rezultatet:
         for rresht in rezultatet:
-            # Rresht[1]: Titulli, Rresht[2]: Pershkrimi, Rresht[3]: Kategoria, Rresht[4]: Qyteti, Rresht[5]: Cmimi, Rresht[6]: Kontakti, Rresht[7]: Foto, Rresht[8]: Detaje Specifike
             col_img, col_content = st.columns([1, 3])
             
             with col_img:
