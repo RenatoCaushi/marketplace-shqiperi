@@ -14,11 +14,12 @@ st.set_page_config(
 # Përcaktojmë rrugën absolute të databazës
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "marketplace.db")
 
-# 1. INITIALIZIMI I DATABAZËS
+# 1. INITIALIZIMI I DATABAZËS DHE MIGRIMI AUTOMATIK I KOLONAVE
 def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
     
+    # Krijojmë tabelën e përdoruesve nëse nuk ekziston
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS perdoruesit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -29,6 +30,12 @@ def init_database():
         )
     """)
     
+    # Kontrollojmë nëse kolona 'fjalekalimi' ekziston (për tabelat e vjetra), nëse jo e shtojmë
+    cursor.execute("PRAGMA table_info(perdoruesit)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if "fjalekalimi" not in columns:
+        cursor.execute("ALTER TABLE perdoruesit ADD COLUMN fjalekalimi TEXT")
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -260,8 +267,8 @@ elif st.session_state.menu_page == "Auth":
                     try:
                         run_query("INSERT INTO perdoruesit (emri, email, fjalekalimi) VALUES (?, ?, ?)", (emri_r, email_r, pass_r), commit=True)
                         st.success("Llogaria u krijua me sukses! Tani mund të kyçeni.")
-                    except Exception:
-                        st.error("Ky email ekziston tashmë.")
+                    except Exception as e:
+                        st.error(f"Ky email ekziston tashmë ose pati një gabim: {e}")
                 else:
                     st.error("Plotësoni të gjitha fushat.")
 
