@@ -11,10 +11,10 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Përcaktojmë rrugën absolute të databazës në mënyrë që të ruhet përgjithmonë
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "njoftime.db")
+# Përcaktojmë rrugën absolute me emrin e ri të databazës për të shmangur konfliktet
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "marketplace.db")
 
-# 1. INITIALIZIMI I DATABAZËS DHE TABELAVE PËR RUJTJE TË PËRSHMTME
+# 1. INITIALIZIMI I DATABAZËS
 def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
@@ -29,7 +29,7 @@ def init_database():
         )
     """)
     
-    # Tabela e Njoftimeve (Lidhur me Përdoruesin)
+    # Tabela e Njoftimeve me kolonën perdorues_id që në fillim
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,7 +49,7 @@ def init_database():
 
 init_database()
 
-# Funksion i sigurt për të ekzekutuar query-t në databazë
+# Funksion i sigurt për queries
 def run_query(query, params=(), fetch_all=True, commit=False):
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
@@ -140,7 +140,6 @@ if is_admin_page:
         st.markdown("<br>", unsafe_allow_html=True)
         st.subheader("📊 Menaxhimi i Përgjithshëm i Platformës")
         
-        # Statistikat
         total_perd_res = run_query("SELECT COUNT(*) FROM perdoruesit", fetch_all=False)
         total_perdorues = total_perd_res[0] if total_perd_res else 0
 
@@ -155,7 +154,7 @@ if is_admin_page:
             
         st.markdown("---")
         
-        # --- SHFAQJA E PËRDORUESVE TË REGJISTRUAR NË ADMIN ---
+        # Përdoruesit e Regjistruar
         st.subheader("👥 Të Gjithë Përdoruesit e Regjistruar")
         perdoruesit_list = run_query("SELECT id, emri, email, data_regjistrimit FROM perdoruesit")
         
@@ -171,7 +170,7 @@ if is_admin_page:
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- MENAXHIMI / FSHIRJA E NJOFTIMEVE NË ADMIN ---
+        # Njoftimet e Postuara
         st.subheader("📋 Njoftimet e Postuara nga Përdoruesit")
         
         admin_rezultate = run_query("""
@@ -214,7 +213,7 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- SIDEBAR (Filtra dhe Harta) ---
+    # --- SIDEBAR ---
     st.sidebar.markdown("## 🔍 Kërkimi & Filtrimi")
     kerko_tekst = st.sidebar.text_input("Kërko me fjalë kyçe", placeholder="P.sh. iPhone, BMW...")
 
@@ -277,9 +276,8 @@ else:
     with tab2:
         st.subheader("Krijo Njoftim të Ri")
         
-        # Marrim përdoruesit ekzistues që të mund të zgjidhen për të bërë postimin
         perdorues_options = run_query("SELECT id, emri FROM perdoruesit")
-        perd_dict = {f"{p[1]} (ID: {p[0]})": p[0] for p in perdorues_options} if perdorues_options else {}
+        perd_dict = {f"{p[1]} (ID: {p[0]})": p[0] for p in perdorues_options} if perdoruesit_options else {}
         
         with st.form("formular_njoftimi", clear_on_submit=True):
             if perd_dict:
