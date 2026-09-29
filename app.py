@@ -11,14 +11,25 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Përcaktojmë rrugën absolute të databazës
+# Përcaktojmë rrugën absolute të databazës në mënyrë që të ruhet përgjithmonë
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "njoftime.db")
 
-# 1. INITIALIZIMI DHE MIGRIMI AUTOMATIK I DATABAZËS
+# 1. INITIALIZIMI I DATABAZËS DHE TABELAVE PËR RUJTJE TË PËRSHMTME
 def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
     
+    # Tabela e Përdoruesve
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS perdoruesit (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            emri TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            data_regjistrimit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Tabela e Njoftimeve (Lidhur me Përdoruesin)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,34 +38,18 @@ def init_database():
             kategoria TEXT,
             qyteti TEXT,
             cmimi REAL,
-            kontakti TEXT
+            kontakti TEXT,
+            perdorues_id INTEGER,
+            FOREIGN KEY (perdorues_id) REFERENCES perdoruesit(id)
         )
     """)
     
-    cursor.execute("PRAGMA table_info(njoftime)")
-    existing_columns = [col[1] for col in cursor.fetchall()]
-    
-    required_columns = {
-        "pershkrimi": "TEXT",
-        "kategoria": "TEXT",
-        "qyteti": "TEXT",
-        "cmimi": "REAL",
-        "kontakti": "TEXT"
-    }
-    
-    for col_name, col_type in required_columns.items():
-        if col_name not in existing_columns:
-            try:
-                cursor.execute(f"ALTER TABLE njoftime ADD COLUMN {col_name} {col_type}")
-            except Exception:
-                pass
-                
     conn.commit()
     conn.close()
 
 init_database()
 
-# Funksion i sigurt për queries
+# Funksion i sigurt për të ekzekutuar query-t në databazë
 def run_query(query, params=(), fetch_all=True, commit=False):
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
@@ -121,7 +116,6 @@ if is_admin_page:
         </div>
     """, unsafe_allow_html=True)
     
-    # Kontrollojmë nëse admini është i kyçur
     if not st.session_state.admin_logged_in:
         with st.form("form_login_admin"):
             username_input = st.text_input("Admin Username")
@@ -146,32 +140,59 @@ if is_admin_page:
         st.markdown("<br>", unsafe_allow_html=True)
         st.subheader("📊 Menaxhimi i Përgjithshëm i Platformës")
         
-        total_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
-        total_njoftime = total_res[0] if total_res else 0
+        # Statistikat
+        total_perd_res = run_query("SELECT COUNT(*) FROM perdoruesit", fetch_all=False)
+        total_perdorues = total_perd_res[0] if total_perd_res else 0
+
+        total_njof_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
+        total_njoftime = total_njof_res[0] if total_njof_res else 0
         
         col_stat1, col_stat2 = st.columns(2)
         with col_stat1:
-            st.metric(label="Përdorues të Regjistruar", value="Aktivë")
+            st.metric(label="Përdorues të Regjistruar", value=f"{total_perdorues} Përdorues")
         with col_stat2:
             st.metric(label="Gjithsej Njoftime", value=f"{total_njoftime} Njoftime")
             
         st.markdown("---")
-        st.subheader("Lista e Njoftimeve për Menaxhim / Fshirje")
         
-        admin_rezultate = run_query("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
+        # --- SHFAQJA E PËRDORUESVE TË REGJISTRUAR NË ADMIN ---
+        st.subheader("👥 Të Gjithë Përdoruesit e Regjistruar")
+        perdoruesit_list = run_query("SELECT id, emri, email, data_regjistrimit FROM perdoruesit")
+        
+        if perdoruesit_list:
+            for p in perdoruesit_list:
+                st.markdown(f"""
+                    <div style="background: #ffffff; padding: 12px 18px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 8px;">
+                        <b>ID: {p[0]}</b> | 👤 Emri: <b>{p[1]}</b> | ✉️ Email: <b>{p[2]}</b> | 📅 Regjistruar më: {p[3]}
+                    </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.info("Nuk ka asnjë përdorues të regjistruar ende.")
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # --- MENAXHIMI / FSHIRJA E NJOFTIMEVE NË ADMIN ---
+        st.subheader("📋 Njoftimet e Postuara nga Përdoruesit")
+        
+        admin_rezultate = run_query("""
+            SELECT n.id, n.titulli, n.kategoria, n.qyteti, n.cmimi, p.emri 
+            FROM njoftime n 
+            LEFT JOIN perdoruesit p ON n.perdorues_id = p.id
+        """)
         
         if admin_rezultate:
             for item in admin_rezultate:
+                autori = item[5] if item[5] else "I panjohur"
                 col_a1, col_a2 = st.columns([4, 1])
                 with col_a1:
-                    st.write(f"**ID: {item[0]}** | 📌 {item[1]} | 🏷️ {item[2]} | 📍 {item[3]} | 💰 {item[4]}€")
+                    st.write(f"**ID: {item[0]}** | 📌 {item[1]} | 🏷️ {item[2]} | 📍 {item[3]} | 💰 {item[4]}€ | 👤 Postuar nga: *{autori}*")
                 with col_a2:
                     if st.button("Fshi", key=f"fshi_{item[0]}"):
                         run_query("DELETE FROM njoftime WHERE id = ?", (item[0],), fetch_all=False, commit=True)
                         st.success(f"Njoftimi me ID {item[0]} u fshi!")
                         st.rerun()
         else:
-            st.info("Nuk ka asnjë njoftim për të menaxhuar në databazë ose tabela është bosh.")
+            st.info("Nuk ka asnjë njoftim në databazë.")
 
 else:
     # --- FAQJA KRYESORE NORMALE ---
@@ -193,7 +214,7 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- SIDEBAR ---
+    # --- SIDEBAR (Filtra dhe Harta) ---
     st.sidebar.markdown("## 🔍 Kërkimi & Filtrimi")
     kerko_tekst = st.sidebar.text_input("Kërko me fjalë kyçe", placeholder="P.sh. iPhone, BMW...")
 
@@ -211,7 +232,7 @@ else:
     })
     st.sidebar.map(df_hartë, zoom=5, use_container_width=True)
 
-    tab1, tab2 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri"])
+    tab1, tab2, tab3 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri", "👤 Regjistrohu si Përdorues"])
 
     with tab1:
         st.subheader("Njoftimet e Publikuara")
@@ -251,11 +272,21 @@ else:
                     </div>
                 """, unsafe_allow_html=True)
         else:
-            st.info("📭 Nuk u gjet asnjë njoftim me këto filtra ose fjalë kërkimi. Provoni të shtoni një të ri!")
+            st.info("📭 Nuk u gjet asnjë njoftim me këto filtra ose fjalë kërkimi.")
 
     with tab2:
         st.subheader("Krijo Njoftim të Ri")
+        
+        # Marrim përdoruesit ekzistues që të mund të zgjidhen për të bërë postimin
+        perdorues_options = run_query("SELECT id, emri FROM perdoruesit")
+        perd_dict = {f"{p[1]} (ID: {p[0]})": p[0] for p in perdorues_options} if perdorues_options else {}
+        
         with st.form("formular_njoftimi", clear_on_submit=True):
+            if perd_dict:
+                zgjidh_perd_label = st.selectbox("Zgjidh Përdoruesin Që Poston *", list(perd_dict.keys()))
+            else:
+                st.warning("⚠️ Kujdes: Nuk keni regjistruar ende asnjë përdorues! Ju lutemi regjistrohuni te skeda e tretë më parë.")
+                
             col_f1, col_f2 = st.columns(2)
             with col_f1:
                 titulli = st.text_input("Titulli i Njoftimit *", placeholder="P.sh. Shitet Audi A3 Sedan")
@@ -270,15 +301,37 @@ else:
             submit = st.form_submit_button("🚀 Publiko Njoftimin Tani", use_container_width=True)
             
             if submit:
-                if titulli and pershkrimi and kontakti:
+                if titulli and pershkrimi and kontakti and perd_dict:
+                    p_id = perd_dict[zgjidh_perd_label]
                     run_query("""
-                        INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti), fetch_all=False, commit=True)
-                    st.success("🎉 Njoftimi u publikua me sukses!")
+                        INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, perdorues_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, p_id), fetch_all=False, commit=True)
+                    st.success("🎉 Njoftimi u publikua me sukses dhe u ruajt në sistem!")
                     st.rerun()
                 else:
-                    st.error("⚠️ Ju lutemi plotësoni fushat e detyrueshme.")
+                    st.error("⚠️ Ju lutemi plotësoni fushat dhe sigurohuni që keni zgjedhur një përdorues të regjistruar.")
+
+    with tab3:
+        st.subheader("Regjistrohu si Përdorues i Ri në Platformë")
+        with st.form("formular_perdoruesi", clear_on_submit=True):
+            emri_reg = st.text_input("Emri dhe Mbiemri *", placeholder="P.sh. Arben Hoxha")
+            email_reg = st.text_input("Adresa Email *", placeholder="p.sh. arben@example.com")
+            
+            submit_reg = st.form_submit_button("💾 Regjistrohu Tani", use_container_width=True)
+            
+            if submit_reg:
+                if emri_reg and email_reg:
+                    try:
+                        run_query("""
+                            INSERT INTO perdoruesit (emri, email) VALUES (?, ?)
+                        """, (emri_reg, email_reg), fetch_all=False, commit=True)
+                        st.success(f"🎉 Përdoruesi '{emri_reg}' u regjistrua me sukses dhe u ruajt përgjithmonë!")
+                        st.rerun()
+                    except Exception:
+                        st.error("⚠️ Ky Email ekziston tashmë në sistem. Përdorni një tjetër.")
+                else:
+                    st.error("⚠️ Ju lutemi plotësoni të gjitha fushat.")
 
 # --- FOOTER ---
 st.markdown("""
