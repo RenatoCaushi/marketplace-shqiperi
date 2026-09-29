@@ -80,7 +80,6 @@ st.markdown("""
             margin-bottom: 25px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
-        .nav-logo { font-size: 1.4rem; font-weight: 800; color: #0f172a; text-decoration: none; }
         
         /* Kartat e Njoftimeve */
         .njoftim-card {
@@ -157,7 +156,6 @@ nav_col1, nav_col2, nav_col3, nav_col4 = st.columns([3, 2, 2, 2])
 with nav_col1:
     st.markdown("### 🛒 Marketplace Shqipëri")
 
-# Inicializojmë variablin e faqes nëse nuk ekziston
 if 'menu_page' not in st.session_state:
     st.session_state.menu_page = "Kreu"
 
@@ -175,7 +173,7 @@ with nav_col4:
             st.session_state.menu_page = "Auth"
             st.rerun()
     else:
-        if st.button(f"👤 Përshëndetje, {st.session_state.user_name} (Dil)", use_container_width=True):
+        if st.button(f"👤 {st.session_state.user_name} (Dil)", use_container_width=True):
             st.session_state.user_logged_in = False
             st.session_state.user_email = None
             st.session_state.user_name = None
@@ -354,8 +352,8 @@ else:
     query += " ORDER BY id DESC"
     rezultatet = run_query(query, params)
     
-    if rezultate_ Njoftime := rezultatet:
-        for rresht in rezultate_Njoftime:
+    if rezultatet:
+        for rresht in rezultatet:
             st.markdown(f"""
                 <div class="njoftim-card">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
