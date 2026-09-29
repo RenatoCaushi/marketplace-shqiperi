@@ -63,27 +63,11 @@ def run_query(query, params=(), fetch_all=True, commit=False):
         conn.close()
     return result
 
-# --- STILIZIMI I AVANCUAR CSS (MODERN & CLEAN) ---
+# --- STILIZIMI I AVANCUAR CSS ---
 st.markdown("""
     <style>
         .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
         
-        /* Navbar / Header Modern */
-        .main-header {
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
-            padding: 35px 40px;
-            border-radius: 20px;
-            color: white;
-            box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.2);
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .header-title { font-size: 2.2rem; font-weight: 800; margin: 0; color: #ffffff; }
-        .header-subtitle { font-size: 1.05rem; margin-top: 5px; color: #93c5fd; }
-        
-        /* Kartat e Njoftimeve */
         .njoftim-card {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -103,28 +87,7 @@ st.markdown("""
         .badge-qyteti { background-color: #f1f5f9; color: #475569; padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; }
         .price-display { color: #16a34a; font-size: 1.35rem; font-weight: 800; }
 
-        /* Seksioni i Hartës Shqipëri / Qytetet */
-        .albania-map-box {
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            padding: 24px;
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
-            margin-bottom: 25px;
-        }
-        .city-tag {
-            display: inline-block;
-            background: #f8fafc;
-            border: 1px solid #cbd5e1;
-            padding: 6px 14px;
-            border-radius: 8px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #334155;
-            margin: 4px;
-        }
-
-        /* Footer i Ri Profesional */
+        /* Footer Profesional */
         .footer-container {
             background-color: #0f172a;
             color: #94a3b8;
@@ -163,14 +126,7 @@ if 'admin_logged_in' not in st.session_state:
         st.session_state.admin_logged_in = False
 
 if is_admin_page:
-    st.markdown("""
-        <div class="main-header">
-            <div>
-                <div class="header-title">🔒 Paneli i Administrimit</div>
-                <div class="header-subtitle">Menaxhimi i platformës Marketplace Shqipëri</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
+    st.title("🔒 Paneli i Administrimit")
     
     if not st.session_state.admin_logged_in:
         with st.form("form_login_admin"):
@@ -247,15 +203,9 @@ if is_admin_page:
 
 else:
     # --- FAQJA KRYESORE ---
-    st.markdown("""
-        <div class="main-header">
-            <div>
-                <div class="header-title">🛒 Marketplace Shqipëri</div>
-                <div class="header-subtitle">Platforma më e besuar për njoftimet dhe shërbimet në Shqipëri</div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
+    st.title("🛒 Marketplace Shqipëri")
+    st.write("Platforma juaj e besuar për njoftimet dhe shërbimet në Shqipëri.")
+    
     total_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
     total_njoftime = total_res[0] if total_res else 0
 
@@ -267,7 +217,7 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- SIDEBAR MODERN ---
+    # --- SIDEBAR ---
     st.sidebar.markdown("## 🔍 Filtrimi i Njoftimeve")
     kerko_tekst = st.sidebar.text_input("Kërko fjalë kyçe", placeholder="P.sh. iPhone, Audi...")
 
@@ -277,25 +227,23 @@ else:
     kategorite = ["Të gjitha", "Puna / Vende Lirë", "Automjete", "Prona / Qira", "Elektronikë", "Të Tjera"]
     zgjidh_kategorine = st.sidebar.selectbox("🏷️ Kategoria", kategorite)
 
+    # --- PANELI INTERAKTIV I QYTETEVE (Zëvendëson hartën) ---
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🗺️ Territori i Shqipërisë")
-    st.sidebar.markdown("""
-        <div style="font-size: 0.85rem; color: #475569; line-height: 1.5;">
-            Platforma jonë përfshin të gjitha qarqet kryesore të vendit, duke ju lidhur direkt me blerës dhe shitës lokalë.
-        </div>
-    """, unsafe_allow_html=True)
+    st.sidebar.markdown("### 🏙️ Zgjidh Qytetin Shpejt")
     
-    # Harta e pastër e fokusuar vetëm në Shqipëri
-    df_albania = pd.DataFrame({
-        "lat": [41.3275, 41.3246, 40.465, 42.0683, 41.1125, 40.7239, 40.6186],
-        "lon": [19.8187, 19.4565, 19.4913, 19.5126, 20.0822, 19.5561, 20.7812],
-    })
-    st.sidebar.map(df_albania, zoom=6, use_container_width=True)
+    selected_city_btn = st.sidebar.radio(
+        "Kliko një qytet për filtrim të shpejtë:",
+        qytetet,
+        index=qytetet.index(zgjidh_qytetin) if zgjidh_qytetin in qytetet else 0
+    )
+    
+    if selected_city_btn != zgjidh_qytetin:
+        zgjidh_qytetin = selected_city_btn
 
     tab1, tab2, tab3 = st.tabs(["📋 Shiko Njoftimet", "➕ Shto Njoftim", "👤 Regjistrohu"])
 
     with tab1:
-        st.subheader("Njoftimet e Publikuara")
+        st.subheader(f"Njoftimet e Publikuara {f'(Qyteti: {zgjidh_qytetin})' if zgjidh_qytetin != 'Të gjitha' else ''}")
         
         query = "SELECT * FROM njoftime WHERE 1=1"
         params = []
@@ -338,7 +286,11 @@ else:
         st.subheader("Krijo Njoftim të Ri")
         
         perdorues_options = run_query("SELECT id, emri FROM perdoruesit")
-        perd_dict = {f"{p[1]} (ID: {p[0]})": p[0] for p in perdorues_options} if perdoruesit_options else {}
+        perd_dict = {}
+        if perdoruesit_options:
+            for p in perdoruesit_options:
+                label = f"{p[1]} (ID: {p[0]})"
+                perd_dict[label] = p[0]
         
         with st.form("formular_njoftimi", clear_on_submit=True):
             if perd_dict:
@@ -392,7 +344,7 @@ else:
                 else:
                     st.error("⚠️ Plotësoni të gjitha fushat.")
 
-# --- FOOTER PROFESIONAL ---
+# --- FOOTER ---
 st.markdown("""
     <div class="footer-container">
         <div class="footer-col">
