@@ -125,10 +125,11 @@ if not st.session_state.user_logged_in and "uid" in query_params:
         saved_uid = int(query_params["uid"])
         res_user = run_query("SELECT id, emri, email FROM perdoruesit WHERE id = %s", (saved_uid,), fetch_all=False)
         if res_user:
+            user_data = res_user[0]
             st.session_state.user_logged_in = True
-            st.session_state.user_id = res_user[0]
-            st.session_state.user_name = res_user[1]
-            st.session_state.user_email = res_user[2]
+            st.session_state.user_id = user_data[0]
+            st.session_state.user_name = user_data[1]
+            st.session_state.user_email = user_data[2]
     except Exception:
         pass
 
@@ -198,8 +199,8 @@ if is_admin_page:
         st.subheader("📊 Menaxhimi i Sistemit")
         p_count_res = run_query("SELECT COUNT(*) FROM perdoruesit", fetch_all=False)
         n_count_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
-        p_count = p_count_res[0] if p_count_res else 0
-        n_count = n_count_res[0] if n_count_res else 0
+        p_count = p_count_res[0][0] if p_count_res and p_count_res[0] else 0
+        n_count = n_count_res[0][0] if n_count_res and n_count_res[0] else 0
         
         c1, c2 = st.columns(2)
         c1.metric("Përdorues", p_count)
@@ -227,18 +228,19 @@ elif st.session_state.menu_page == "Auth":
             pass_l = st.text_input("Fjalëkalimi", type="password")
             submit_l = st.form_submit_button("Kyçu")
             if submit_l:
-                res = run_query("SELECT id, emri, email FROM perdoruesit WHERE email = %s", (email_l,), fetch_all=False)
+                res = run_query("SELECT id, emri, email FROM perdoruesit WHERE email = %s AND fjalekalimi = %s", (email_l, pass_l), fetch_all=False)
                 if res:
+                    user_data = res[0]
                     st.session_state.user_logged_in = True
-                    st.session_state.user_id = res[0]
-                    st.session_state.user_name = res[1]
-                    st.session_state.user_email = res[2]
-                    st.query_params["uid"] = str(res[0])
+                    st.session_state.user_id = user_data[0]
+                    st.session_state.user_name = user_data[1]
+                    st.session_state.user_email = user_data[2]
+                    st.query_params["uid"] = str(user_data[0])
                     st.session_state.menu_page = "Kreu"
-                    st.success(f"Mirë se erdhe, {res[1]}!")
+                    st.success(f"Mirë se erdhe, {user_data[1]}!")
                     st.rerun()
                 else:
-                    st.error("Email i gabuar ose nuk ekziston.")
+                    st.error("Email ose fjalëkalim i gabuar.")
                     
     with tab_r:
         with st.form("form_register_user"):
