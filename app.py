@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Përcaktojmë rrugën absolute me emrin e ri të databazës për të shmangur konfliktet
+# Përcaktojmë rrugën absolute me emrin e ri të databazës
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "marketplace.db")
 
 # 1. INITIALIZIMI I DATABAZËS
@@ -29,7 +29,7 @@ def init_database():
         )
     """)
     
-    # Tabela e Njoftimeve me kolonën perdorues_id që në fillim
+    # Tabela e Njoftimeve me kolonën perdorues_id
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,12 +102,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Menaxhimi i sesionit për login e adminit
-if 'admin_logged_in' not in st.session_state:
-    st.session_state.admin_logged_in = False
-
+# Menaxhimi i sesionit për login e adminit me ruajtje në URL (që të mos dalë kur bëhet refresh)
 query_params = st.query_params
 is_admin_page = query_params.get("page") == "admin"
+
+if 'admin_logged_in' not in st.session_state:
+    if query_params.get("auth") == "true_secure_admin":
+        st.session_state.admin_logged_in = True
+    else:
+        st.session_state.admin_logged_in = False
 
 if is_admin_page:
     st.markdown("""
@@ -125,6 +128,8 @@ if is_admin_page:
             if submit_login:
                 if username_input == "admin" and password_input == "12345":
                     st.session_state.admin_logged_in = True
+                    st.query_params["page"] = "admin"
+                    st.query_params["auth"] = "true_secure_admin"
                     st.success("Hyrja u krye me sukses!")
                     st.rerun()
                 else:
