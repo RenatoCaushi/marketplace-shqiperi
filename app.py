@@ -98,6 +98,8 @@ st.markdown("""
         .badge-qyteti { background-color: #f1f5f9; color: #475569; padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; }
         .price-display { color: #16a34a; font-size: 1.35rem; font-weight: 800; }
         .map-container { background: #ffffff; border: 1px solid #e2e8f0; padding: 25px; border-radius: 16px; margin-bottom: 30px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
+        .whatsapp-btn { background-color: #25d366; color: white !important; padding: 6px 12px; border-radius: 6px; font-weight: 600; text-decoration: none; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 6px; }
+        .whatsapp-btn:hover { background-color: #20ba5a; }
         .footer-container { background-color: #0f172a; color: #94a3b8; padding: 50px 40px; border-radius: 20px; margin-top: 60px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 30px; border-top: 4px solid #2563eb; }
         .footer-col { flex: 1; min-width: 250px; }
         .footer-col h4 { color: white; font-size: 1.1rem; font-weight: 700; margin-bottom: 15px; }
@@ -208,7 +210,6 @@ if is_admin_page:
         
         st.markdown("---")
         
-        # Skedat për menaxhimin e plotë të njoftimeve dhe përdoruesve
         tab_admin_njoftime, tab_admin_perdorues = st.tabs(["📋 Menaxho Njoftimet", "👥 Menaxho Përdoruesit"])
         
         with tab_admin_njoftime:
@@ -420,7 +421,6 @@ else:
         
     query += " ORDER BY id DESC"
     
-    # Përdorimi i funksionit të optimizuar me cache
     rezultatet = run_cached_query(query, tuple(params))
     
     if rezultatet:
@@ -445,6 +445,16 @@ else:
                     if detajet_tekst.strip():
                         specifike_html = f'<div class="spec-box">⚙️ <b>Detajet:</b> {detajet_tekst}</div>'
 
+                # Përgatitja e numrit dhe linkut të WhatsApp-it
+                raw_phone = str(rresht[6]).strip()
+                # Pastrojmë karakteret e panevojshme për linkun e WhatsApp (lejon vetëm shifrat dhe '+' në fillim)
+                clean_phone = "".join([c for c in raw_phone if c.isdigit() or c == '+'])
+                if clean_phone.startswith('0'):
+                    clean_phone = '+355' + clean_phone[1:] # Konverton numrat lokalë në formatin ndërkombëtar të Shqipërisë nëse është nevoja
+                
+                whatsapp_msg = f"Përshëndetje, jam i/e interesuar për njoftimin tuaj: '{rresht[1]}' në Marketplace Shqipëri."
+                whatsapp_url = f"https://wa.me/{clean_phone}?text={urllib_quote_safe(whatsapp_msg) if 'urllib_quote_safe' in globals() else whatsapp_msg.replace(' ', '%20')}"
+
                 st.markdown(f"""
                     <div style="background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 15px;">
                         <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
@@ -456,7 +466,12 @@ else:
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; border-top: 1px solid #f1f5f9; padding-top: 10px;">
                             <span class="badge-kategoria">🏷️ {rresht[3]}</span>
                             <span class="badge-qyteti">📍 {rresht[4]}</span>
-                            <span style="margin-left: auto; color: #1e3a8a;">📞 <b>{rresht[6]}</b></span>
+                            <div style="margin-left: auto; display: flex; align-items: center; gap: 12px;">
+                                <span style="color: #1e3a8a;">📞 <b>{rresht[6]}</b></span>
+                                <a href="{whatsapp_url}" target="_blank" class="whatsapp-btn">
+                                    💬 WhatsApp
+                                </a>
+                            </div>
                         </div>
                     </div>
                 """, unsafe_allow_html=True)
