@@ -3,6 +3,7 @@ import sqlite3
 import streamlit as st
 import pandas as pd
 from PIL import Image
+import uuid
 
 # Konfigurimi i faqes
 st.set_page_config(
@@ -276,10 +277,10 @@ elif st.session_state.menu_page == "Shto Njoftim":
                 modeli = c2.text_input("Modeli", placeholder="P.sh. A3, C-Class, X5")
                 viti = c3.text_input("Viti i Prodhimit", placeholder="P.sh. 2018")
                 
-                c4, c5 = st.columns(2)
+                c4, c5, c6 = st.columns(3)
                 karburanti = c4.selectbox("Karburanti", ["Naftë", "Benzinë", "Hibrid", "Elektrik", "Benzinë + Gaz"])
                 kambio = c5.selectbox("Kambio", ["Automatike", "Manuale"])
-                kilometrazhi = c6.text_input("Kilometrazhi", placeholder="P.sh. 140,000 km") if 'c6' in locals() else st.text_input("Kilometrazhi", placeholder="P.sh. 140,000 km")
+                kilometrazhi = c6.text_input("Kilometrazhi", placeholder="P.sh. 140,000 km")
                 specifike_rez = f"Marka/Modeli: {marka} {modeli} | Viti: {viti} | Karburanti: {karburanti} | Kambio: {kambio} | Km: {kilometrazhi}"
                 
             elif kategoria == "Elektronikë":
@@ -310,9 +311,7 @@ elif st.session_state.menu_page == "Shto Njoftim":
                     foto_path_str = ""
                     if foto_uploaded is not None:
                         os.makedirs(UPLOAD_DIR, exist_ok=True)
-                        # Përdorim emër unik të skedarit për të shmangur konfliktet
                         file_extension = os.path.splitext(foto_uploaded.name)[1]
-                        import uuid
                         unique_filename = f"{uuid.uuid4().hex}{file_extension}"
                         foto_path_str = os.path.join(UPLOAD_DIR, unique_filename)
                         
@@ -393,7 +392,6 @@ else:
             
             with col_img:
                 foto_path = rresht[7] if len(rresht) > 7 else None
-                # Kontrollojmë nëse rruga e fotos ekzikon (qoftë relative apo absolute)
                 if foto_path and isinstance(foto_path, str):
                     full_foto_path = foto_path if os.path.isabs(foto_path) else os.path.join(BASE_DIR, foto_path)
                     if os.path.exists(full_foto_path):
@@ -410,7 +408,6 @@ else:
             with col_content:
                 specifike_html = ""
                 if len(rresht) > 8 and rresht[8]:
-                    # Parandalojmë shfaqjen e rrugës së skedarit te detajet nëse ndodh gabim
                     detajet_tekst = str(rresht[8])
                     if "uploads/" not in detajet_tekst and detajet_tekst.strip():
                         specifike_html = f'<div class="spec-box">⚙️ <b>Detajet:</b> {detajet_tekst}</div>'
