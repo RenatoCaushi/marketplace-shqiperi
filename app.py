@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 from PIL import Image
 import uuid
+import psycopg2
 
 # Konfigurimi i faqes
 st.set_page_config(
@@ -12,53 +13,62 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Lidhja me databazën e jashtme në Neon PostgreSQL përmes Streamlit Secrets
-conn = st.connection("postgres", type="sql")
+# Lidhja direkte me Neon PostgreSQL duke lexuar nga st.secrets
+def get_db_connection():
+    return psycopg2.connect(st.secrets["postgres"]["url"])
 
 def init_database():
-    with conn.session as s:
-        s.execute("""
-            CREATE TABLE IF NOT EXISTS perdoruesit (
-                id SERIAL PRIMARY KEY,
-                emri TEXT NOT NULL,
-                email TEXT UNIQUE NOT NULL,
-                fjalekalimi TEXT,
-                data_regjistrimit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        s.execute("""
-            CREATE TABLE IF NOT EXISTS njoftime (
-                id SERIAL PRIMARY KEY,
-                titulli TEXT NOT NULL,
-                pershkrimi TEXT,
-                kategoria TEXT,
-                qyteti TEXT,
-                cmimi TEXT,
-                kontakti TEXT,
-                foto TEXT,
-                detaje_specifike TEXT,
-                perdorues_id INTEGER REFERENCES perdoruesit(id)
-            );
-        """)
-        s.commit()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS perdoruesit (
+            id SERIAL PRIMARY KEY,
+            emri TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            fjalekalimi TEXT,
+            data_regjistrimit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS njoftime (
+            id SERIAL PRIMARY KEY,
+            titulli TEXT NOT NULL,
+            pershkrimi TEXT,
+            kategoria TEXT,
+            qyteti TEXT,
+            cmimi TEXT,
+            kontakti TEXT,
+            foto TEXT,
+            detaje_specifike TEXT,
+            perdorues_id INTEGER REFERENCES perdoruesit(id)
+        );
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
 
 init_database()
 
 # Funksion ndihmës për të ekzekutuar queries në Neon PostgreSQL
 def run_query(query, params=(), fetch_all=True, commit=False):
     try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(query, params)
+        
         if commit:
-            with conn.session as s:
-                s.execute(query, params)
-                s.commit()
-            return None
+            conn.commit()
+            result = None
         else:
-            # Për lexim të dhënash (SELECT)
-            df = conn.query(query, params=params, ttl=0)
             if fetch_all:
-                return df.values.tolist()
+                result = cur.fetchall()
             else:
-                return df.values.tolist()[0] if not df.empty else None
+                row = cur.fetchone()
+                result = [row] if row else None
+                
+        cur.close()
+        conn.close()
+        return result
     except Exception as e:
         st.error(f"Gabim në databazë: {e}")
         return None
