@@ -45,16 +45,19 @@ def init_database():
             cmimi TEXT,
             kontakti TEXT,
             foto TEXT,
+            detaje_specifike TEXT,
             perdorues_id INTEGER,
             FOREIGN KEY (perdorues_id) REFERENCES perdoruesit(id)
         )
     """)
     
-    # Kontroll për kolonën 'foto'
+    # Kontroll për kolonat shtesë nëse tabela ekzistonte më paré
     cursor.execute("PRAGMA table_info(njoftime)")
     columns_n = [col[1] for col in cursor.fetchall()]
     if "foto" not in columns_n:
         cursor.execute("ALTER TABLE njoftime ADD COLUMN foto TEXT")
+    if "detaje_specifike" not in columns_n:
+        cursor.execute("ALTER TABLE njoftime ADD COLUMN detaje_specifike TEXT")
     
     conn.commit()
     conn.close()
@@ -81,7 +84,6 @@ st.markdown("""
     <style>
         .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
         
-        /* Kartat e Njoftimeve */
         .njoftim-card {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -94,12 +96,12 @@ st.markdown("""
             align-items: center;
         }
         .card-title { color: #0f172a; font-size: 1.3rem; font-weight: 700; margin: 0 0 8px 0; }
-        .card-desc { color: #475569; font-size: 0.95rem; line-height: 1.5; margin-bottom: 16px; }
+        .card-desc { color: #475569; font-size: 0.95rem; line-height: 1.5; margin-bottom: 12px; }
+        .spec-box { background-color: #f8fafc; border-left: 3px solid #2563eb; padding: 8px 12px; font-size: 0.85rem; color: #334155; margin-bottom: 12px; border-radius: 4px; }
         .badge-kategoria { background-color: #eff6ff; color: #2563eb; padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; }
         .badge-qyteti { background-color: #f1f5f9; color: #475569; padding: 6px 14px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; }
         .price-display { color: #16a34a; font-size: 1.35rem; font-weight: 800; }
 
-        /* Seksioni i Hartës / Qyteteve Interaktive */
         .map-container {
             background: #ffffff;
             border: 1px solid #e2e8f0;
@@ -109,7 +111,6 @@ st.markdown("""
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
         }
 
-        /* Footer Profesional */
         .footer-container {
             background-color: #0f172a;
             color: #94a3b8;
@@ -269,21 +270,64 @@ elif st.session_state.menu_page == "Auth":
                     st.error("Plotësoni të gjitha fushat.")
 
 elif st.session_state.menu_page == "Shto Njoftim":
-    st.subheader("➕ Krijo një Njoftim të Ri")
+    st.subheader("➕ Krijo një Njoftim të Ri me Fusha Specifike")
     if not st.session_state.user_logged_in:
         st.warning("⚠️ Duhet të kyçeni paraprakisht për të postuar një njoftim!")
     else:
         with st.form("form_shto_njoftim", clear_on_submit=True):
-            titulli = st.text_input("Titulli i Njoftimit *", placeholder="P.sh. Shitet Audi A3 ose Apartament 2+1")
-            kategoria = st.selectbox("Kategoria *", kategorite_lista[1:])
+            kategoria = st.selectbox("Zgjidh Kategorinë *", kategorite_lista[1:])
+            titulli = st.text_input("Titulli i Njoftimit *", placeholder="P.sh. Shitet Apartament 2+1 / Audi A3 / iPhone 15")
             qyteti = st.selectbox("Qyteti *", qytetet_lista[1:])
-            cmimi = st.text_input("Çmimi *", placeholder="P.sh. 15000€, 300 Lekë/dita, ose Me marrëveshje")
+            cmimi = st.text_input("Çmimi *", placeholder="P.sh. 120,000€, 500 Lekë/dita, Me marrëveshje")
+            
+            # Fusha specifike sipas kategorisë
+            specifike_rez = ""
+            st.markdown("---")
+            st.markdown(f"#### Detajet Specifike për: **{kategoria}**")
+            
+            if kategoria == "Pasuri e Paluajtshme":
+                c1, c2 = st.columns(2)
+                lloji_prones = c1.selectbox("Lloji i Pronës", ["Apartament", "Shtëpi / Vila", "Truall / Tokë", "Dyqan / Ambient Biznesi", "Garazh"])
+                siperfaqja = c2.text_input("Sipërfaqja (m²)", placeholder="P.sh. 85 m²")
+                
+                c3, c4 = st.columns(2)
+                dhomat = c3.selectbox("Numri i Dhomave", ["1+1", "2+1", "3+1", "Ambiente Open Space", "Vila e plotë"])
+                kati = c4.text_input("Kati", placeholder="P.sh. Kati 3 (me ashensor)")
+                specifike_rez = f"Lloji: {lloji_prones} | Sipërfaqja: {siperfaqja} | Dhomat: {dhomat} | Kati: {kati}"
+                
+            elif kategoria == "Automjete":
+                c1, c2, c3 = st.columns(3)
+                marka = c1.text_input("Marka", placeholder="P.sh. Audi, Mercedes, BMW")
+                modeli = c2.text_input("Modeli", placeholder="P.sh. A3, C-Class, X5")
+                viti = c3.text_input("Viti i Prodhimit", placeholder="P.sh. 2018")
+                
+                c4, c5 = st.columns(2)
+                karburanti = c4.selectbox("Karburanti", ["Naftë", "Benzinë", "Hibrid", "Elektrik", "Benzinë + Gaz"])
+                kambio = c5.selectbox("Kambio", ["Automatike", "Manuale"])
+                kilometrazhi = st.text_input("Kilometrazhi", placeholder="P.sh. 140,000 km")
+                specifike_rez = f"Marka/Modeli: {marka} {modeli} | Viti: {viti} | Karburanti: {karburanti} | Kambio: {kambio} | Km: {kilometrazhi}"
+                
+            elif kategoria == "Elektronikë":
+                c1, c2 = st.columns(2)
+                pajisja = c1.text_input("Lloji i Pajisjes", placeholder="P.sh. Smartphone, Laptop, TV")
+                gjendja = c2.selectbox("Gjendja", ["E re (Kuti)", "E përdorur (Shumë e mirë)", "E përdorur (Me shenja përdorimi)"])
+                specifikat = st.text_input("Specifikat Kryesore", placeholder="P.sh. 256GB, 8GB RAM, Ngjyra E zezë")
+                specifike_rez = f"Pajisja: {pajisja} | Gjendja: {gjendja} | Specifikat: {specifikat}"
+                
+            elif kategoria == "Vend Pune":
+                c1, c2 = st.columns(2)
+                orari = c1.selectbox("Lloji i Kontratës / Orari", ["Full-time", "Part-time", "Sezonale", "Nga shtëpia (Remote)"])
+                paga = c2.text_input("Paga (Opsionale)", placeholder="P.sh. 80,000 Lekë ose Komisione")
+                kriteret = st.text_input("Kërkesat Kryesore", placeholder="P.sh. Eksperience 2 vjeçare, Gjuha Angleze")
+                specifike_rez = f"Orari: {orari} | Paga: {paga} | Kërkesa: {kriteret}"
+                
+            else:
+                specifike_rez = "Njoftim i Përgjithshëm"
+
+            st.markdown("---")
             kontakti = st.text_input("Numri i Telefonit / Kontakti *", placeholder="+355 68...")
-            
-            # Ngarkimi i Fotos
-            foto_uploaded = st.file_uploader("Ngarko Foto për Njoftimin (Opsionale)", type=["jpg", "jpeg", "png"])
-            
-            pershkrimi = st.text_area("Përshkrimi i Detajuar *", placeholder="Shkruani detajet e pronës, automjetit ose pajisjes...")
+            foto_uploaded = st.file_uploader("Ngarko Foto Përfaqësuese (Opsionale)", type=["jpg", "jpeg", "png"])
+            pershkrimi = st.text_area("Përshkrimi i Detajuar i Njoftimit *", placeholder="Shkruani informacione shtesë për blerësit ose të interesuarit...")
             
             submit_njoftim = st.form_submit_button("Publiko Njoftimin Tani", use_container_width=True)
             if submit_njoftim:
@@ -296,15 +340,15 @@ elif st.session_state.menu_page == "Shto Njoftim":
                             f.write(foto_uploaded.getbuffer())
 
                     run_query("""
-                        INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto, perdorues_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto_path_str, st.session_state.user_id), commit=True)
+                        INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto, detaje_specifike, perdorues_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto_path_str, specifike_rez, st.session_state.user_id), commit=True)
                     
                     st.success("🎉 Njoftimi u publikua me sukses!")
                     st.session_state.menu_page = "Kreu"
                     st.rerun()
                 else:
-                    st.error("Ju lutemi plotësoni të gjitha fushat e detyrueshme (Titull, Kategori, Qytet, Çmim, Kontakt, Përshkrim).")
+                    st.error("Ju lutemi plotësoni të gjitha fushat e detyrueshme (Titull, Çmim, Kontakt, Përshkrim).")
 
 else:
     # --- FAQJA KRYESORE (KREU) ---
@@ -366,6 +410,7 @@ else:
     
     if rezultatet:
         for rresht in rezultatet:
+            # Rresht[1]: Titulli, Rresht[2]: Pershkrimi, Rresht[3]: Kategoria, Rresht[4]: Qyteti, Rresht[5]: Cmimi, Rresht[6]: Kontakti, Rresht[7]: Foto, Rresht[8]: Detaje Specifike
             col_img, col_content = st.columns([1, 3])
             
             with col_img:
@@ -375,12 +420,17 @@ else:
                     st.markdown("🖼️ *Pa foto*")
                     
             with col_content:
+                specifike_html = ""
+                if len(rresht) > 8 and rresht[8]:
+                    specifike_html = f'<div class="spec-box">⚙️ <b>Detajet:</b> {rresht[8]}</div>'
+
                 st.markdown(f"""
                     <div style="background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px;">
                             <h3 class="card-title" style="margin:0;">📌 {rresht[1]}</h3>
                             <span class="price-display">{rresht[5]}</span>
                         </div>
+                        {specifike_html}
                         <p class="card-desc">{rresht[2]}</p>
                         <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; border-top: 1px solid #f1f5f9; padding-top: 10px;">
                             <span class="badge-kategoria">🏷️ {rresht[3]}</span>
