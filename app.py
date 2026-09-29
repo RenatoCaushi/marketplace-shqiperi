@@ -12,8 +12,10 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Përcaktojmë rrugën absolute të databazës
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "marketplace.db")
+# Përcaktojmë rrugën absolute të databazës dhe folderit të imazheve
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "marketplace.db")
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
 def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
@@ -97,7 +99,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Menaxhimi i sesionit dhe persistenca përmes URL Query Params
+# Menaxhimi i sesionit dhe URL Query Params
 query_params = st.query_params
 is_admin_page = query_params.get("page") == "admin"
 
@@ -110,7 +112,6 @@ if 'user_logged_in' not in st.session_state:
     st.session_state.user_name = None
     st.session_state.user_id = None
 
-# Rikupero nga URL nëse ka mbetur i kyçur
 if not st.session_state.user_logged_in and "uid" in query_params:
     try:
         saved_uid = int(query_params["uid"])
@@ -278,7 +279,7 @@ elif st.session_state.menu_page == "Shto Njoftim":
                 c4, c5 = st.columns(2)
                 karburanti = c4.selectbox("Karburanti", ["Naftë", "Benzinë", "Hibrid", "Elektrik", "Benzinë + Gaz"])
                 kambio = c5.selectbox("Kambio", ["Automatike", "Manuale"])
-                kilometrazhi = st.text_input("Kilometrazhi", placeholder="P.sh. 140,000 km")
+                kilometrazhi = c6.text_input("Kilometrazhi", placeholder="P.sh. 140,000 km") if 'c6' in locals() else st.text_input("Kilometrazhi", placeholder="P.sh. 140,000 km")
                 specifike_rez = f"Marka/Modeli: {marka} {modeli} | Viti: {viti} | Karburanti: {karburanti} | Kambio: {kambio} | Km: {kilometrazhi}"
                 
             elif kategoria == "Elektronikë":
@@ -308,8 +309,13 @@ elif st.session_state.menu_page == "Shto Njoftim":
                 if titulli and pershkrimi and kontakti and cmimi:
                     foto_path_str = ""
                     if foto_uploaded is not None:
-                        os.makedirs("uploads", exist_ok=True)
-                        foto_path_str = os.path.join("uploads", foto_uploaded.name)
+                        os.makedirs(UPLOAD_DIR, exist_ok=True)
+                        # Përdorim emër unik të skedarit për të shmangur konfliktet
+                        file_extension = os.path.splitext(foto_uploaded.name)[1]
+                        import uuid
+                        unique_filename = f"{uuid.uuid4().hex}{file_extension}"
+                        foto_path_str = os.path.join(UPLOAD_DIR, unique_filename)
+                        
                         with open(foto_path_str, "wb") as f:
                             f.write(foto_uploaded.getbuffer())
 
@@ -387,19 +393,27 @@ else:
             
             with col_img:
                 foto_path = rresht[7] if len(rresht) > 7 else None
-                if foto_path and isinstance(foto_path, str) and os.path.exists(foto_path):
-                    try:
-                        img = Image.open(foto_path)
-                        st.image(img)
-                    except Exception:
-                        st.markdown("🖼️ *Gabim në ngarkimin e fotos*")
+                # Kontrollojmë nëse rruga e fotos ekzikon (qoftë relative apo absolute)
+                if foto_path and isinstance(foto_path, str):
+                    full_foto_path = foto_path if os.path.isabs(foto_path) else os.path.join(BASE_DIR, foto_path)
+                    if os.path.exists(full_foto_path):
+                        try:
+                            img = Image.open(full_foto_path)
+                            st.image(img, use_container_width=True)
+                        except Exception:
+                            st.markdown("🖼️ *Gabim në ngarkimin e fotos*")
+                    else:
+                        st.markdown("🖼️ *Pa foto*")
                 else:
                     st.markdown("🖼️ *Pa foto*")
                     
             with col_content:
                 specifike_html = ""
                 if len(rresht) > 8 and rresht[8]:
-                    specifike_html = f'<div class="spec-box">⚙️ <b>Detajet:</b> {rresht[8]}</div>'
+                    # Parandalojmë shfaqjen e rrugës së skedarit te detajet nëse ndodh gabim
+                    detajet_tekst = str(rresht[8])
+                    if "uploads/" not in detajet_tekst and detajet_tekst.strip():
+                        specifike_html = f'<div class="spec-box">⚙️ <b>Detajet:</b> {detajet_tekst}</div>'
 
                 st.markdown(f"""
                     <div style="background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 15px;">
