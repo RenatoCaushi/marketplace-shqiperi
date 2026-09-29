@@ -1,5 +1,4 @@
 import os
-import sqlite3
 import streamlit as st
 import pandas as pd
 from PIL import Image
@@ -13,72 +12,56 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# Përcaktojmë rrugën absolute të databazës dhe folderit të imazheve
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "marketplace.db")
-UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+# Lidhja me databazën e jashtme në Neon PostgreSQL përmes Streamlit Secrets
+conn = st.connection("postgres", type="sql")
 
 def init_database():
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    cursor = conn.cursor()
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS perdoruesit (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            emri TEXT NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            fjalekalimi TEXT,
-            data_regjistrimit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    
-    cursor.execute("PRAGMA table_info(perdoruesit)")
-    columns_p = [col[1] for col in cursor.fetchall()]
-    if "fjalekalimi" not in columns_p:
-        cursor.execute("ALTER TABLE perdoruesit ADD COLUMN fjalekalimi TEXT")
-
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS njoftime (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            titulli TEXT NOT NULL,
-            pershkrimi TEXT,
-            kategoria TEXT,
-            qyteti TEXT,
-            cmimi TEXT,
-            kontakti TEXT,
-            foto TEXT,
-            detaje_specifike TEXT,
-            perdorues_id INTEGER,
-            FOREIGN KEY (perdorues_id) REFERENCES perdoruesit(id)
-        )
-    """)
-    
-    cursor.execute("PRAGMA table_info(njoftime)")
-    columns_n = [col[1] for col in cursor.fetchall()]
-    if "foto" not in columns_n:
-        cursor.execute("ALTER TABLE njoftime ADD COLUMN foto TEXT")
-    if "detaje_specifike" not in columns_n:
-        cursor.execute("ALTER TABLE njoftime ADD COLUMN detaje_specifike TEXT")
-    
-    conn.commit()
-    conn.close()
+    with conn.session as s:
+        s.execute("""
+            CREATE TABLE IF NOT EXISTS perdoruesit (
+                id SERIAL PRIMARY KEY,
+                emri TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                fjalekalimi TEXT,
+                data_regjistrimit TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        """)
+        s.execute("""
+            CREATE TABLE IF NOT EXISTS njoftime (
+                id SERIAL PRIMARY KEY,
+                titulli TEXT NOT NULL,
+                pershkrimi TEXT,
+                kategoria TEXT,
+                qyteti TEXT,
+                cmimi TEXT,
+                kontakti TEXT,
+                foto TEXT,
+                detaje_specifike TEXT,
+                perdorues_id INTEGER REFERENCES perdoruesit(id)
+            );
+        """)
+        s.commit()
 
 init_database()
 
+# Funksion ndihmës për të ekzekutuar queries në Neon PostgreSQL
 def run_query(query, params=(), fetch_all=True, commit=False):
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    cursor = conn.cursor()
     try:
-        cursor.execute(query, params)
         if commit:
-            conn.commit()
-        result = cursor.fetchall() if fetch_all else cursor.fetchone()
+            with conn.session as s:
+                s.execute(query, params)
+                s.commit()
+            return None
+        else:
+            # Për lexim të dhënash (SELECT)
+            df = conn.query(query, params=params, ttl=0)
+            if fetch_all:
+                return df.values.tolist()
+            else:
+                return df.values.tolist()[0] if not df.empty else None
     except Exception as e:
-        result = None
         st.error(f"Gabim në databazë: {e}")
-    finally:
-        conn.close()
-    return result
+        return None
 
 # --- STILIZIMI I PROFESIONALIZUAR CSS ---
 st.markdown("""
@@ -116,7 +99,7 @@ if 'user_logged_in' not in st.session_state:
 if not st.session_state.user_logged_in and "uid" in query_params:
     try:
         saved_uid = int(query_params["uid"])
-        res_user = run_query("SELECT id, emri, email FROM perdoruesit WHERE id = ?", (saved_uid,), fetch_all=False)
+        res_user = run_query("SELECT id, emri, email FROM perdoruesit WHERE id = %s", (saved_uid,), fetch_all=False)
         if res_user:
             st.session_state.user_logged_in = True
             st.session_state.user_id = res_user[0]
@@ -189,8 +172,11 @@ if is_admin_page:
             st.rerun()
             
         st.subheader("📊 Menaxhimi i Sistemit")
-        p_count = run_query("SELECT COUNT(*) FROM perdoruesit", fetch_all=False)[0]
-        n_count = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)[0]
+        p_count_res = run_query("SELECT COUNT(*) FROM perdoruesit", fetch_all=False)
+        n_count_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
+        p_count = p_count_res[0] if p_count_res else 0
+        n_count = n_count_res[0] if n_count_res else 0
+        
         c1, c2 = st.columns(2)
         c1.metric("Përdorues", p_count)
         c2.metric("Njoftime", n_count)
@@ -203,7 +189,7 @@ if is_admin_page:
                 col_a, col_b = st.columns([4, 1])
                 col_a.write(f"**ID: {nj[0]}** | {nj[1]} | 📍 {nj[2]} | 💰 {nj[3]}")
                 if col_b.button("Fshi", key=f"fshi_admin_{nj[0]}"):
-                    run_query("DELETE FROM njoftime WHERE id = ?", (nj[0],), commit=True)
+                    run_query("DELETE FROM njoftime WHERE id = %s", (nj[0],), commit=True)
                     st.success("Njoftimi u fshi!")
                     st.rerun()
 
@@ -217,7 +203,7 @@ elif st.session_state.menu_page == "Auth":
             pass_l = st.text_input("Fjalëkalimi", type="password")
             submit_l = st.form_submit_button("Kyçu")
             if submit_l:
-                res = run_query("SELECT id, emri, email FROM perdoruesit WHERE email = ?", (email_l,), fetch_all=False)
+                res = run_query("SELECT id, emri, email FROM perdoruesit WHERE email = %s", (email_l,), fetch_all=False)
                 if res:
                     st.session_state.user_logged_in = True
                     st.session_state.user_id = res[0]
@@ -239,7 +225,7 @@ elif st.session_state.menu_page == "Auth":
             if submit_r:
                 if emri_r and email_r:
                     try:
-                        run_query("INSERT INTO perdoruesit (emri, email, fjalekalimi) VALUES (?, ?, ?)", (emri_r, email_r, pass_r), commit=True)
+                        run_query("INSERT INTO perdoruesit (emri, email, fjalekalimi) VALUES (%s, %s, %s)", (emri_r, email_r, pass_r), commit=True)
                         st.success("Llogaria u krijua me sukses! Tani mund të kyçeni.")
                     except Exception as e:
                         st.error(f"Ky email ekziston tashmë ose pati një gabim: {e}")
@@ -310,24 +296,25 @@ elif st.session_state.menu_page == "Shto Njoftim":
                 if titulli and pershkrimi and kontakti and cmimi:
                     foto_path_str = ""
                     if foto_uploaded is not None:
-                        os.makedirs(UPLOAD_DIR, exist_ok=True)
+                        upload_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+                        os.makedirs(upload_dir, exist_ok=True)
                         file_extension = os.path.splitext(foto_uploaded.name)[1]
                         unique_filename = f"{uuid.uuid4().hex}{file_extension}"
-                        foto_path_str = os.path.join(UPLOAD_DIR, unique_filename)
+                        foto_path_str = os.path.join(upload_dir, unique_filename)
                         
                         with open(foto_path_str, "wb") as f:
                             f.write(foto_uploaded.getbuffer())
 
                     run_query("""
                         INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto, detaje_specifike, perdorues_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto_path_str, specifike_rez, st.session_state.user_id), commit=True)
                     
-                    st.success("🎉 Njoftimi u publikua me sukses!")
+                    st.success("🎉 Njoftimi u publikua me sukses në Neon Cloud!")
                     st.session_state.menu_page = "Kreu"
                     st.rerun()
                 else:
-                    st.error("Ju lutemi plotësoni të gjitha fushat e detyrueshme (Titull, Çmim, Kontakt, Përshkrim).")
+                    st.error("Ju lutemi plotësoni të gjitha fushat e detyrueshme.")
 
 else:
     # --- FAQJA KRYESORE (KREU) ---
@@ -372,15 +359,15 @@ else:
     params = []
     
     if st.session_state.selected_qyteti_filter != "Të gjitha":
-        query += " AND qyteti = ?"
+        query += " AND qyteti = %s"
         params.append(st.session_state.selected_qyteti_filter)
         
     if zgjidh_kategorine != "Të gjitha":
-        query += " AND kategoria = ?"
+        query += " AND kategoria = %s"
         params.append(zgjidh_kategorine)
         
     if kerko_tekst:
-        query += " AND (titulli LIKE ? OR pershkrimi LIKE ?)"
+        query += " AND (titulli ILIKE %s OR pershkrimi ILIKE %s)"
         params.extend([f"%{kerko_tekst}%", f"%{kerko_tekst}%"])
         
     query += " ORDER BY id DESC"
@@ -392,15 +379,11 @@ else:
             
             with col_img:
                 foto_path = rresht[7] if len(rresht) > 7 else None
-                if foto_path and isinstance(foto_path, str):
-                    full_foto_path = foto_path if os.path.isabs(foto_path) else os.path.join(BASE_DIR, foto_path)
-                    if os.path.exists(full_foto_path):
-                        try:
-                            img = Image.open(full_foto_path)
-                            st.image(img, use_container_width=True)
-                        except Exception:
-                            st.markdown("🖼️ *Gabim në ngarkimin e fotos*")
-                    else:
+                if foto_path and isinstance(foto_path, str) and os.path.exists(foto_path):
+                    try:
+                        img = Image.open(foto_path)
+                        st.image(img, use_container_width=True)
+                    except Exception:
                         st.markdown("🖼️ *Pa foto*")
                 else:
                     st.markdown("🖼️ *Pa foto*")
@@ -409,7 +392,7 @@ else:
                 specifike_html = ""
                 if len(rresht) > 8 and rresht[8]:
                     detajet_tekst = str(rresht[8])
-                    if "uploads/" not in detajet_tekst and detajet_tekst.strip():
+                    if detajet_tekst.strip():
                         specifike_html = f'<div class="spec-box">⚙️ <b>Detajet:</b> {detajet_tekst}</div>'
 
                 st.markdown(f"""
