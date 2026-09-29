@@ -19,7 +19,6 @@ def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
     
-    # Krijojmë tabelën nëse nuk ekziston fare
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS njoftime (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,7 +31,6 @@ def init_database():
         )
     """)
     
-    # Kontrollojmë nëse tabela ekzistuese i ka të gjitha kolonat e nevojshme (për databazat e vjetra)
     cursor.execute("PRAGMA table_info(njoftime)")
     existing_columns = [col[1] for col in cursor.fetchall()]
     
@@ -54,7 +52,6 @@ def init_database():
     conn.commit()
     conn.close()
 
-# E thirrim menjëherë në fillim
 init_database()
 
 # Funksion i sigurt për queries
@@ -110,54 +107,71 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Lexojmë parametrin e URL-së (p.sh. ?page=admin)
+# Menaxhimi i sesionit për login e adminit
+if 'admin_logged_in' not in st.session_state:
+    st.session_state.admin_logged_in = False
+
 query_params = st.query_params
 is_admin_page = query_params.get("page") == "admin"
 
 if is_admin_page:
-    # --- PAMJA E PANELIT TË ADMINIT ---
     st.markdown("""
         <div class="hero-section">
             <div class="hero-title">🔒 Paneli i Administrimit (Admin Login)</div>
-            <div class="hero-subtitle">Qytetet kryesore: Tiranë, Durrës, Vlorë, Shkodër...</div>
         </div>
     """, unsafe_allow_html=True)
     
-    st.success("Jeni i kyçur si Administrator i Sistemit.")
-    
-    if st.button("Dil nga Admini"):
-        st.query_params.clear()
-        st.rerun()
-        
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.subheader("📊 Menaxhimi i Përgjithshëm i Platformës")
-    
-    total_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
-    total_njoftime = total_res[0] if total_res else 0
-    
-    col_stat1, col_stat2 = st.columns(2)
-    with col_stat1:
-        st.metric(label="Përdorues të Regjistruar", value="Aktivë")
-    with col_stat2:
-        st.metric(label="Gjithsej Njoftime", value=f"{total_njoftime} Njoftime")
-        
-    st.markdown("---")
-    st.subheader("Lista e Njoftimeve për Menaxhim / Fshirje")
-    
-    admin_rezultate = run_query("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
-    
-    if admin_rezultate:
-        for item in admin_rezultate:
-            col_a1, col_a2 = st.columns([4, 1])
-            with col_a1:
-                st.write(f"**ID: {item[0]}** | 📌 {item[1]} | 🏷️ {item[2]} | 📍 {item[3]} | 💰 {item[4]}€")
-            with col_a2:
-                if st.button("Fshi", key=f"fshi_{item[0]}"):
-                    run_query("DELETE FROM njoftime WHERE id = ?", (item[0],), fetch_all=False, commit=True)
-                    st.success(f"Njoftimi me ID {item[0]} u fshi!")
+    # Kontrollojmë nëse admini është i kyçur
+    if not st.session_state.admin_logged_in:
+        with st.form("form_login_admin"):
+            username_input = st.text_input("Admin Username")
+            password_input = st.text_input("Admin Password", type="password")
+            submit_login = st.form_submit_button("Hyr në Admin")
+            
+            if submit_login:
+                if username_input == "admin" and password_input == "12345":
+                    st.session_state.admin_logged_in = True
+                    st.success("Hyrja u krye me sukses!")
                     st.rerun()
+                else:
+                    st.error("Kredenciale të gabuara për admin!")
     else:
-        st.info("Nuk ka asnjë njoftim për të menaxhuar në databazë ose tabela është bosh.")
+        st.success("Jeni i kyçur si Administrator i Sistemit.")
+        
+        if st.button("Dil nga Admini"):
+            st.session_state.admin_logged_in = False
+            st.query_params.clear()
+            st.rerun()
+            
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.subheader("📊 Menaxhimi i Përgjithshëm i Platformës")
+        
+        total_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
+        total_njoftime = total_res[0] if total_res else 0
+        
+        col_stat1, col_stat2 = st.columns(2)
+        with col_stat1:
+            st.metric(label="Përdorues të Regjistruar", value="Aktivë")
+        with col_stat2:
+            st.metric(label="Gjithsej Njoftime", value=f"{total_njoftime} Njoftime")
+            
+        st.markdown("---")
+        st.subheader("Lista e Njoftimeve për Menaxhim / Fshirje")
+        
+        admin_rezultate = run_query("SELECT id, titulli, kategoria, qyteti, cmimi FROM njoftime")
+        
+        if admin_rezultate:
+            for item in admin_rezultate:
+                col_a1, col_a2 = st.columns([4, 1])
+                with col_a1:
+                    st.write(f"**ID: {item[0]}** | 📌 {item[1]} | 🏷️ {item[2]} | 📍 {item[3]} | 💰 {item[4]}€")
+                with col_a2:
+                    if st.button("Fshi", key=f"fshi_{item[0]}"):
+                        run_query("DELETE FROM njoftime WHERE id = ?", (item[0],), fetch_all=False, commit=True)
+                        st.success(f"Njoftimi me ID {item[0]} u fshi!")
+                        st.rerun()
+        else:
+            st.info("Nuk ka asnjë njoftim për të menaxhuar në databazë ose tabela është bosh.")
 
 else:
     # --- FAQJA KRYESORE NORMALE ---
@@ -168,7 +182,6 @@ else:
         </div>
     """, unsafe_allow_html=True)
 
-    # Statistika të shpejta
     total_res = run_query("SELECT COUNT(*) FROM njoftime", fetch_all=False)
     total_njoftime = total_res[0] if total_res else 0
 
@@ -198,7 +211,6 @@ else:
     })
     st.sidebar.map(df_hartë, zoom=5, use_container_width=True)
 
-    # --- TABS (Shiko / Shto) ---
     tab1, tab2 = st.tabs(["📋 Shiko Njoftimet Aktive", "➕ Shto Njoftim të Ri"])
 
     with tab1:
