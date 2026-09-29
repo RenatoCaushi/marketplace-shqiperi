@@ -19,7 +19,6 @@ def init_database():
     conn = sqlite3.connect(DB_PATH, check_same_thread=False)
     cursor = conn.cursor()
     
-    # Krijojmë tabelën e përdoruesve nëse nuk ekziston
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS perdoruesit (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,10 +29,10 @@ def init_database():
         )
     """)
     
-    # Kontrollojmë nëse kolona 'fjalekalimi' ekziston (për tabelat e vjetra), nëse jo e shtojmë
+    # Kontroll për kolonën 'fjalekalimi'
     cursor.execute("PRAGMA table_info(perdoruesit)")
-    columns = [col[1] for col in cursor.fetchall()]
-    if "fjalekalimi" not in columns:
+    columns_p = [col[1] for col in cursor.fetchall()]
+    if "fjalekalimi" not in columns_p:
         cursor.execute("ALTER TABLE perdoruesit ADD COLUMN fjalekalimi TEXT")
 
     cursor.execute("""
@@ -43,12 +42,19 @@ def init_database():
             pershkrimi TEXT,
             kategoria TEXT,
             qyteti TEXT,
-            cmimi REAL,
+            cmimi TEXT,
             kontakti TEXT,
+            foto TEXT,
             perdorues_id INTEGER,
             FOREIGN KEY (perdorues_id) REFERENCES perdoruesit(id)
         )
     """)
+    
+    # Kontroll për kolonën 'foto'
+    cursor.execute("PRAGMA table_info(njoftime)")
+    columns_n = [col[1] for col in cursor.fetchall()]
+    if "foto" not in columns_n:
+        cursor.execute("ALTER TABLE njoftime ADD COLUMN foto TEXT")
     
     conn.commit()
     conn.close()
@@ -75,19 +81,6 @@ st.markdown("""
     <style>
         .stApp { background-color: #f8fafc; font-family: 'Inter', sans-serif; }
         
-        /* Navbar Profesional */
-        .navbar {
-            background-color: #ffffff;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 15px 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 12px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-        
         /* Kartat e Njoftimeve */
         .njoftim-card {
             background-color: #ffffff;
@@ -96,6 +89,9 @@ st.markdown("""
             border-radius: 16px;
             margin-bottom: 20px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            display: flex;
+            gap: 20px;
+            align-items: center;
         }
         .card-title { color: #0f172a; font-size: 1.3rem; font-weight: 700; margin: 0 0 8px 0; }
         .card-desc { color: #475569; font-size: 0.95rem; line-height: 1.5; margin-bottom: 16px; }
@@ -142,7 +138,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Menaxhimi i sesionit të Adminit dhe Përdoruesit
+# Menaxhimi i sesionit
 query_params = st.query_params
 is_admin_page = query_params.get("page") == "admin"
 
@@ -190,8 +186,8 @@ with nav_col4:
 
 st.markdown("---")
 
-qytetet_lista = ["Të gjitha", "Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier", "Korçë", "Sarandë"]
-kategorite_lista = ["Të gjitha", "Puna / Vende Lirë", "Automjete", "Prona / Qira", "Elektronikë", "Të Tjera"]
+qytetet_lista = ["Të gjitha", "Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier", "Korçë", "Sarandë", "Gjirokastër", "Berat", "Lushnjë"]
+kategorite_lista = ["Të gjitha", "Pasuri e Paluajtshme", "Automjete", "Elektronikë", "Vend Pune", "Të Tjera"]
 
 if is_admin_page:
     st.title("🔒 Paneli i Administrimit")
@@ -229,7 +225,7 @@ if is_admin_page:
         if njoftimet_all:
             for nj in njoftimet_all:
                 col_a, col_b = st.columns([4, 1])
-                col_a.write(f"**ID: {nj[0]}** | {nj[1]} | 📍 {nj[2]} | 💰 {nj[3]}€")
+                col_a.write(f"**ID: {nj[0]}** | {nj[1]} | 📍 {nj[2]} | 💰 {nj[3]}")
                 if col_b.button("Fshi", key=f"fshi_admin_{nj[0]}"):
                     run_query("DELETE FROM njoftime WHERE id = ?", (nj[0],), commit=True)
                     st.success("Njoftimi u fshi!")
@@ -278,38 +274,48 @@ elif st.session_state.menu_page == "Shto Njoftim":
         st.warning("⚠️ Duhet të kyçeni paraprakisht për të postuar një njoftim!")
     else:
         with st.form("form_shto_njoftim", clear_on_submit=True):
-            titulli = st.text_input("Titulli i Njoftimit *", placeholder="P.sh. Shitet apartament te 2 Shkollat")
+            titulli = st.text_input("Titulli i Njoftimit *", placeholder="P.sh. Shitet Audi A3 ose Apartament 2+1")
             kategoria = st.selectbox("Kategoria *", kategorite_lista[1:])
             qyteti = st.selectbox("Qyteti *", qytetet_lista[1:])
-            cmimi = st.number_input("Çmimi (€) *", min_value=0.0, format="%.2f")
+            cmimi = st.text_input("Çmimi *", placeholder="P.sh. 15000€, 300 Lekë/dita, ose Me marrëveshje")
             kontakti = st.text_input("Numri i Telefonit / Kontakti *", placeholder="+355 68...")
-            pershkrimi = st.text_area("Përshkrimi i Detajuar *")
+            
+            # Ngarkimi i Fotos
+            foto_uploaded = st.file_uploader("Ngarko Foto për Njoftimin (Opsionale)", type=["jpg", "jpeg", "png"])
+            
+            pershkrimi = st.text_area("Përshkrimi i Detajuar *", placeholder="Shkruani detajet e pronës, automjetit ose pajisjes...")
             
             submit_njoftim = st.form_submit_button("Publiko Njoftimin Tani", use_container_width=True)
             if submit_njoftim:
-                if titulli and pershkrimi and kontakti:
+                if titulli and pershkrimi and kontakti and cmimi:
+                    foto_path_str = ""
+                    if foto_uploaded is not None:
+                        os.makedirs("uploads", exist_ok=True)
+                        foto_path_str = os.path.join("uploads", foto_uploaded.name)
+                        with open(foto_path_str, "wb") as f:
+                            f.write(foto_uploaded.getbuffer())
+
                     run_query("""
-                        INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, perdorues_id)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, st.session_state.user_id), commit=True)
+                        INSERT INTO njoftime (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto, perdorues_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (titulli, pershkrimi, kategoria, qyteti, cmimi, kontakti, foto_path_str, st.session_state.user_id), commit=True)
+                    
                     st.success("🎉 Njoftimi u publikua me sukses!")
                     st.session_state.menu_page = "Kreu"
                     st.rerun()
                 else:
-                    st.error("Ju lutemi plotësoni të gjitha fushat e detyrueshme.")
+                    st.error("Ju lutemi plotësoni të gjitha fushat e detyrueshme (Titull, Kategori, Qytet, Çmim, Kontakt, Përshkrim).")
 
 else:
     # --- FAQJA KRYESORE (KREU) ---
     
-    # Seksioni i Hartës Interaktive të Shqipërisë (Grid me Butona për çdo Qytet)
     st.markdown("""
         <div class="map-container">
             <h3 style="margin-top:0; color: #0f172a;">🗺️ Harta Interaktive e Qyteteve në Shqipëri</h3>
-            <p style="color: #475569; font-size: 0.95rem;">Kliko mbi një qytet më poshtë për të shfaqur menjëherë njoftimet përkatëse:</p>
+            <p style="color: #475569; font-size: 0.95rem;">Kliko mbi një qytet më poshtë për të filtruar njoftimet në kohë reale:</p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Ndërtojmë butonat e qyteteve në formë rrjeti (grid)
     qytetet_per_harten = ["Të gjitha", "Tiranë", "Durrës", "Vlorë", "Shkodër", "Elbasan", "Fier", "Korçë", "Sarandë"]
     cols_map = st.columns(5)
     
@@ -324,13 +330,12 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Sidebar për filtra shtesë
+    # Sidebar për filtra
     st.sidebar.markdown("## 🔍 Filtrimi i Njoftimeve")
-    kerko_tekst = st.sidebar.text_input("Kërko fjalë kyçe", placeholder="P.sh. iPhone, Audi...")
+    kerko_tekst = st.sidebar.text_input("Kërko fjalë kyçe", placeholder="P.sh. Audi, iPhone, 2+1...")
     
     zgjidh_kategorine = st.sidebar.selectbox("🏷️ Kategoria", kategorite_lista)
     
-    # Sinkronizojmë filtrin e qytetit nga sidebar me atë të hartës
     zgjidh_qytetin = st.sidebar.selectbox(
         "📍 Qyteti", 
         qytetet_per_harten, 
@@ -361,20 +366,29 @@ else:
     
     if rezultatet:
         for rresht in rezultatet:
-            st.markdown(f"""
-                <div class="njoftim-card">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                        <h3 class="card-title">📌 {rresht[1]}</h3>
-                        <span class="price-display">{rresht[5]:,.0f} €</span>
+            col_img, col_content = st.columns([1, 3])
+            
+            with col_img:
+                if len(rresht) > 7 and rresht[7] and os.path.exists(rresht[7]):
+                    st.image(rresht[7], use_column_width=True)
+                else:
+                    st.markdown("🖼️ *Pa foto*")
+                    
+            with col_content:
+                st.markdown(f"""
+                    <div style="background-color: #ffffff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 15px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <h3 class="card-title" style="margin:0;">📌 {rresht[1]}</h3>
+                            <span class="price-display">{rresht[5]}</span>
+                        </div>
+                        <p class="card-desc">{rresht[2]}</p>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; border-top: 1px solid #f1f5f9; padding-top: 10px;">
+                            <span class="badge-kategoria">🏷️ {rresht[3]}</span>
+                            <span class="badge-qyteti">📍 {rresht[4]}</span>
+                            <span style="margin-left: auto; color: #1e3a8a;">📞 <b>{rresht[6]}</b></span>
+                        </div>
                     </div>
-                    <p class="card-desc">{rresht[2]}</p>
-                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; border-top: 1px solid #f1f5f9; padding-top: 12px;">
-                        <span class="badge-kategoria">🏷️ {rresht[3]}</span>
-                        <span class="badge-qyteti">📍 {rresht[4]}</span>
-                        <span style="margin-left: auto; color: #1e3a8a;">📞 <b>{rresht[6]}</b></span>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
     else:
         st.info("📭 Nuk u gjet asnjë njoftim për këtë qytet ose filtër.")
 
@@ -383,15 +397,15 @@ st.markdown("""
     <div class="footer-container">
         <div class="footer-col">
             <h4>🛒 Rreth Nesh</h4>
-            <p>Marketplace Shqipëri është platforma juaj lider për njoftimet e klasifikuara, pronat, automjetet dhe mundësitë e punës në çdo qytet të vendit.</p>
+            <p>Marketplace Shqipëri është platforma juaj lider për njoftimet e klasifikuara, pasuritë e paluajtshme, automjetet dhe vendet e punës në çdo qytet.</p>
         </div>
         <div class="footer-col">
             <h4>🏷️ Kategoritë Kryesore</h4>
             <ul>
+                <li>• Pasuri e Paluajtshme</li>
                 <li>• Automjete & Pjesë Këmbimi</li>
-                <li>• Prona & Qira Banesash</li>
-                <li>• Vende Lirë / Puna</li>
                 <li>• Elektronikë & Pajisje</li>
+                <li>• Vend Pune</li>
             </ul>
         </div>
         <div class="footer-col">
