@@ -386,7 +386,7 @@ else:
             
             with col_img:
                 if len(rresht) > 7 and rresht[7] and os.path.exists(rresht[7]):
-                    st.image(rresht[7], use_container_width=True)
+                    st.image(rresht[7])
                 else:
                     st.markdown("🖼️ *Pa foto*")
                     
